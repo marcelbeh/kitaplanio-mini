@@ -6,6 +6,9 @@ import { EVENT_TYPES, listOccurrences, loadEvents } from '../termine/events'
 import { addDays, calendarWeek, dateLabel, dayEntries, loadShifts, localDate, schedulePeople, validDate, formatMinutes, workTime, visibleScheduleDays } from './schedule'
 import { calculateStaffing } from './staffing'
 import { StaffingCard } from './StaffingCard'
+import { checkPlan, inspectStoredShifts } from './checks'
+import type { CheckOptions } from './checks'
+import { PlanChecks } from './PlanChecks'
 import { ShiftEditor } from './ShiftEditor'
 import type { Shift } from './schedule'
 import type { SchedulePerson } from './schedule'
@@ -19,7 +22,7 @@ function readSchedule() {
   }
   const setup = read('Kita-Einstellungen', () => loadSetup(window.localStorage), null)
   return {
-    setup,
+    setup, inspection: inspectStoredShifts({ getItem: key => window.localStorage.getItem(key) }),
     employees: read('Mitarbeiterdaten', () => loadEmployees(window.localStorage).employees, []),
     groups: setup?.groups ?? [],
     absences: read('Abwesenheiten', () => loadAbsences(window.localStorage).absences, []),
@@ -34,6 +37,7 @@ export function SchedulePage() {
   const [dateError, setDateError] = useState('')
   const [editor, setEditor] = useState<{ value: Shift; mode: 'create' | 'update' } | null>(null)
   const [notice, setNotice] = useState('')
+  const [checkOptions, setCheckOptions] = useState<CheckOptions>({})
   useEffect(() => {
     const timer = window.setInterval(() => setToday(localDate()), 60_000)
     const reload = () => { setData(readSchedule()); setToday(localDate()) }
@@ -42,6 +46,7 @@ export function SchedulePage() {
     return () => { window.clearInterval(timer); window.removeEventListener('storage', reload); window.removeEventListener('focus', reload) }
   }, [])
   const week = calendarWeek(selected)
+  const issues = checkPlan({ from: week.monday, to: week.days[6], setup: data.setup, employees: data.employees, absences: data.absences, inspection: data.inspection, errors: data.errors, options: checkOptions })
   const people = schedulePeople(data.employees, data.shifts, data.absences, week.monday, week.days[6])
   const occurrences = listOccurrences(data.events, week.monday, week.days[6])
   const staffing = (date: string) => calculateStaffing(date, data.setup, data.shifts, data.absences, data.employees, data.errors.some(error => /^(Mitarbeiterdaten|Schichten|Abwesenheiten)/.test(error)))
@@ -98,13 +103,20 @@ export function SchedulePage() {
       <p className="kita-help">Wähle ein Datum, um die zugehörige Kalenderwoche zu öffnen.</p>
       {dateError && <p className="kita-errors" role="alert">{dateError}</p>}
     </section>
+    <PlanChecks issues={issues} options={checkOptions} onOptions={setCheckOptions} onSelect={date => {
+      select(date)
+      window.requestAnimationFrame(() => {
+        const target = document.getElementById(window.matchMedia('(max-width: 760px)').matches ? 'schedule-day-heading' : `schedule-date-${date}`)
+        target?.focus(); target?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+      })
+    }} />
     {!data.employees.length && !data.errors.length && <section className="kita-card"><h2>Dein Team fehlt noch</h2><p>Lege zuerst Mitarbeitende an. Bereits gespeicherte Einträge bleiben sichtbar.</p><a className="kita-button secondary" href="#mitarbeiter">Zum Team</a></section>}
     {!shiftsUnavailable && !data.shifts.some(shift => shift.date >= week.monday && shift.date <= week.days[6]) && <p className="kita-help">Für diese Woche sind keine Schichten eingetragen. Abwesenheiten und Sondertermine siehst du unabhängig davon.</p>}
     <div className="schedule-legend" aria-label="Legende"><span className="schedule-group" data-tone="0">Gruppe</span><span className="schedule-absence">Abwesenheit</span><span className="schedule-event">Sondertermin</span></div>
     <div className="schedule-desktop">
       <p id="schedule-scroll-help" className="kita-help">{days.length > 5 ? 'Montag bis Sonntag · Wochenend-Sonderdienste' : 'Montag bis Freitag'} · Das Raster lässt sich bei Bedarf seitlich und nach unten scrollen. Namen und Tagesüberschriften bleiben sichtbar.</p>
       <div className="schedule-scroll" role="region" aria-label="Wochenraster Dienstplan" aria-describedby="schedule-scroll-help" tabIndex={0}>
-        <table className="schedule-table" style={days.length > 5 ? { minWidth: 1240 } : undefined}><caption className="schedule-sr-only">Dienstplan KW {week.week}, {week.year}</caption><thead><tr><th scope="col">Mitarbeitende</th>{days.map(date => <th scope="col" key={date} aria-current={date === today ? 'date' : undefined}>{dateLabel(date, true)}{date === today && <span className="schedule-today">Heute</span>}</th>)}</tr></thead><tbody>
+        <table className="schedule-table" style={days.length > 5 ? { minWidth: 1240 } : undefined}><caption className="schedule-sr-only">Dienstplan KW {week.week}, {week.year}</caption><thead><tr><th scope="col">Mitarbeitende</th>{days.map(date => <th scope="col" key={date} id={`schedule-date-${date}`} tabIndex={-1} aria-current={date === today ? 'date' : undefined}>{dateLabel(date, true)}{date === today && <span className="schedule-today">Heute</span>}</th>)}</tr></thead><tbody>
           <tr><th scope="row">Personalbedarf</th>{days.map(date => <td key={date}><StaffingCard day={staffing(date)} /></td>)}</tr>
           <tr className="schedule-event-row"><th scope="row">Sondertermine</th>{days.map(date => <td key={date}>{eventsForDay(date)}</td>)}</tr>
           {people.map(person => <tr key={person.id}><th scope="row">{person.name}{weeklySummary(person)}{person.historical && <small>Nicht mehr im Team</small>}</th>{days.map(date => <td key={date}>{personDetails(person, date)}</td>)}</tr>)}
@@ -112,7 +124,7 @@ export function SchedulePage() {
       </div>
     </div>
     <section className="schedule-mobile" aria-label="Tagesansicht">
-      <div className="schedule-day-nav"><button className="kita-button secondary" aria-label="Vorheriger Tag" onClick={() => select(addDays(selected, -1))}>←</button><h2 aria-live="polite">{dateLabel(selected, true)}{selected === today && <span className="schedule-today">Heute</span>}</h2><button className="kita-button secondary" aria-label="Nächster Tag" onClick={() => select(addDays(selected, 1))}>→</button></div>
+      <div className="schedule-day-nav"><button className="kita-button secondary" aria-label="Vorheriger Tag" onClick={() => select(addDays(selected, -1))}>←</button><h2 id="schedule-day-heading" tabIndex={-1} aria-live="polite">{dateLabel(selected, true)}{selected === today && <span className="schedule-today">Heute</span>}</h2><button className="kita-button secondary" aria-label="Nächster Tag" onClick={() => select(addDays(selected, 1))}>→</button></div>
       <section className="kita-card"><h3>Personalbedarf</h3><StaffingCard day={staffing(selected)} /></section>
       <section className="kita-card"><h3>Sondertermine</h3>{eventsForDay(selected)}</section>
       <div className="schedule-day-cards">{people.map(person => <article className="kita-card" key={person.id}><h3>{person.name}</h3>{weeklySummary(person)}{person.historical && <p className="kita-help">Nicht mehr im Team</p>}{personDetails(person, selected)}</article>)}</div>

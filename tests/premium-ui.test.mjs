@@ -64,7 +64,7 @@ test('Alle vorhandenen Bereiche und mobile Hauptnavigation bleiben erreichbar', 
     assert.match(html, /Mobile Hauptnavigation/)
     for (const label of ['Start', 'Plan', 'Team', 'Mehr']) assert.ok(html.includes(`<span>${label}</span>`))
     assert.match(html, /aria-expanded="false"/)
-    assert.match(html, /KitaPlanio Lite/)
-    assert.doesNotMatch(html, /KitaPlanio Mini/)
+    assert.match(html, /caro\./)
+    assert.doesNotMatch(html, /KitaPlanio (Mini|Lite)/)
   } finally { globalThis.window = previous }
 })

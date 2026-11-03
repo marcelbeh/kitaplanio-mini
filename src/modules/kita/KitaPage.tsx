@@ -148,7 +148,7 @@ export function KitaPage() {
   </div>
 
   return <div className="kita-setup employee-page">
-    <div className="page-heading"><p className="eyebrow">KitaPlanio Lite</p><h1 id="page-title" tabIndex={-1}>Kita</h1><p>{editing ? 'Deine Einrichtung im Gespräch – Schritt für Schritt.' : 'Deine Kita auf einen Blick.'}</p></div>
+    <div className="page-heading"><p className="eyebrow">caro.</p><h1 id="page-title" tabIndex={-1}>Kita</h1><p>{editing ? 'Deine Einrichtung im Gespräch – Schritt für Schritt.' : 'Deine Kita auf einen Blick.'}</p></div>
     <p className="kita-local-note">{flow ? 'Antworten werden automatisch lokal zwischengespeichert. Stammdaten werden erst beim bestätigten Abschluss geändert.' : 'Lokal in diesem Browser gespeichert · keine Synchronisierung.'}</p>
     {initial.error && <div className="kita-errors" role="alert">{initial.error}</div>}
     {saveError && <div className="kita-errors" role="alert">{saveError}</div>}

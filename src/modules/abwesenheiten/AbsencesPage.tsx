@@ -50,7 +50,7 @@ export function AbsencesPage() {
     catch (error) { setErrors([(error as Error).message]) }
   }
   return <div className="kita-setup employee-page absence-page">
-    <div className="page-heading"><p className="eyebrow">KitaPlanio Lite</p><h1 id="page-title" tabIndex={-1}>Abwesenheiten</h1><p>Urlaub, Krankheit und weitere Abwesenheiten – übersichtlich an einem Ort.</p></div>
+    <div className="page-heading"><p className="eyebrow">caro.</p><h1 id="page-title" tabIndex={-1}>Abwesenheiten</h1><p>Urlaub, Krankheit und weitere Abwesenheiten – übersichtlich an einem Ort.</p></div>
     <p className="kita-local-note">Lokal in diesem Browser gespeichert · keine Synchronisierung. Es werden noch keine Sollstunden, Urlaubskonten oder Dienstpläne berechnet.</p>
     {initial.teamError && <p className="kita-errors" role="alert">{initial.teamError}</p>}
     {initial.absenceError && <p className="kita-errors" role="alert">{initial.absenceError}</p>}

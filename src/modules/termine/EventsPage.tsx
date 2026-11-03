@@ -47,7 +47,7 @@ export function EventsPage() {
     return [...current.map(item => ({ id: item.id, name: item.name })), ...(value?.[key] ?? []).filter(id => !current.some(item => item.id === id)).map(id => ({ id, name: `${id} (nicht mehr vorhanden)` }))]
   }
   return <div className="kita-setup employee-page absence-page">
-    <div className="page-heading"><p className="eyebrow">KitaPlanio Lite</p><h1 id="page-title" tabIndex={-1}>Sondertermine</h1><p>Termine für dein Team – einmalig oder wiederkehrend.</p></div>
+    <div className="page-heading"><p className="eyebrow">caro.</p><h1 id="page-title" tabIndex={-1}>Sondertermine</h1><p>Termine für dein Team – einmalig oder wiederkehrend.</p></div>
     <p className="kita-local-note">Lokal in diesem Browser gespeichert · keine Synchronisierung. Für die spätere Dienstplanung vorbereitet.</p>
     {initial.eventError && <p role="alert" className="kita-errors">{initial.eventError}</p>}
     {initial.contextError && <p role="alert" className="absence-warning">{initial.contextError}</p>}

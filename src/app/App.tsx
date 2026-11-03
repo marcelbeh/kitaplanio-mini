@@ -21,7 +21,12 @@ export function App() {
   const moreButton = useRef<HTMLButtonElement>(null)
   const morePanel = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const onHashChange = () => { setActive(currentModule()); setMoreOpen(false) }
+    const onHashChange = () => {
+      // The skip link targets content within the current area, not a new route.
+      if (window.location.hash === '#main-content') return
+      setActive(currentModule())
+      setMoreOpen(false)
+    }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
@@ -54,7 +59,7 @@ export function App() {
       </main>
       <footer><span>KitaPlanio Lite</span><span>Mit Liebe geplant. Mit Köpfchen gemacht.</span></footer>
     </div>
-    {moreOpen && <div className="mobile-more" id="mobile-more" ref={morePanel}><div className="more-heading"><strong>Mehr für deinen Kita-Alltag</strong><button type="button" onClick={() => { setMoreOpen(false); moreButton.current?.focus() }}>Schließen</button></div>{modules.filter(module => !mobileItems.some(item => item.id === module.id)).map(module => <a key={module.id} href={`#${module.id}`} aria-current={active.id === module.id ? 'page' : undefined} onClick={() => setMoreOpen(false)}><Icon name={module.id} />{module.title}</a>)}</div>}
+    {moreOpen && <div className="mobile-more" id="mobile-more" ref={morePanel}><div className="more-heading"><strong>Mehr für deinen Kita-Alltag</strong><button type="button" onClick={() => { setMoreOpen(false); moreButton.current?.focus() }}>Schließen</button></div>{modules.filter(module => !mobileItems.some(item => item.id === module.id)).map(module => <a key={module.id} href={`#${module.id}`} aria-current={active.id === module.id ? 'page' : undefined} onClick={() => { setMoreOpen(false); if (active.id === module.id) document.getElementById('page-title')?.focus() }}><Icon name={module.id} />{module.title}</a>)}</div>}
     <nav className="bottom-nav" aria-label="Mobile Hauptnavigation">{mobileItems.map(item => <a key={item.id} href={`#${item.id}`} aria-current={active.id === item.id ? 'page' : undefined}><Icon name={item.id} /><span>{item.label}</span></a>)}<button ref={moreButton} type="button" aria-expanded={moreOpen} aria-controls={moreOpen ? 'mobile-more' : undefined} className={moreActive || moreOpen ? 'is-active' : ''} onClick={() => setMoreOpen(!moreOpen)}><Icon name="menu" /><span>Mehr</span></button></nav>
   </div>
 }

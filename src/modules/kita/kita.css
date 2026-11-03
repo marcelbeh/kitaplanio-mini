@@ -1,0 +1,37 @@
+.kita-setup { max-width: 840px; }
+.kita-local-note, .kita-help, .kita-lock-note { color: #607168; font-size: 13px; }
+.kita-progress { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0; margin: 28px 0; list-style: none; }
+.kita-progress li { border-top: 3px solid #dfe7e1; padding-top: 10px; color: #607168; font-size: 12px; }
+.kita-progress li[aria-current="step"] { border-color: #245d50; color: #245d50; font-weight: 700; }
+.kita-progress span { display: block; font-size: 15px; }
+.kita-card { min-width: 0; margin: 20px 0; padding: 24px; border: 1px solid #dfe7e1; border-radius: 12px; background: #fff; overflow-wrap: anywhere; }
+.kita-card h2, .kita-card h3 { margin-top: 0; }
+.kita-card p { font-size: 14px; }
+.kita-shared { border-left: 4px solid #60856a; background: #f0f5ef; }
+.kita-setup legend { padding: 0 6px; font-weight: 650; }
+.kita-setup h3 { font-size: 16px; }
+.kita-setup label { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 13px; font-weight: 600; }
+.kita-setup input { width: 100%; min-width: 0; min-height: 44px; padding: 10px; border: 1px solid #a6b8ac; border-radius: 6px; background: white; color: #233b34; font: inherit; font-size: 16px; }
+.kita-setup input:focus-visible, .kita-button:focus-visible { outline: 3px solid #9c6525; outline-offset: 3px; }
+.kita-count { max-width: 220px; margin-bottom: 12px; }
+.kita-names { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
+.kita-time-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.kita-period-fields { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; align-items: end; }
+.kita-period { min-width: 0; padding: 16px; margin: 12px 0 16px; border: 1px solid #dfe7e1; border-radius: 8px; }
+.kita-period > button { margin-top: 12px; }
+.kita-button { min-height: 44px; padding: 10px 18px; border: 1px solid #245d50; border-radius: 7px; background: #245d50; color: white; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.kita-button.secondary { background: white; color: #245d50; }
+.kita-button:hover { filter: brightness(.95); }
+.kita-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0; }
+.kita-errors { margin: 20px 0; padding: 16px; border: 1px solid #b96c57; border-radius: 8px; background: #fff3ed; color: #7c3226; font-size: 14px; }
+.kita-errors ul { margin-bottom: 0; padding-left: 20px; }
+.kita-success { padding: 12px 16px; background: #eaf2ed; color: #245d50; border-radius: 8px; }
+.kita-summary-group + .kita-summary-group { padding-top: 16px; border-top: 1px solid #dfe7e1; }
+.kita-summary ul { padding-left: 20px; font-size: 14px; }
+@media (max-width: 760px) {
+  .kita-progress { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kita-card { padding: 16px; }
+  .kita-names, .kita-period-fields { grid-template-columns: minmax(0, 1fr); }
+  .kita-period { padding: 10px; }
+  .kita-actions > button { flex: 1 1 auto; }
+}

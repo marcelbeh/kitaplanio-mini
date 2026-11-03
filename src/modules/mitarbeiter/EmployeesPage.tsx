@@ -5,6 +5,9 @@ import type { Employee } from './employees'
 import { EmployeeForm } from './EmployeeForm'
 import '../kita/kita.css'
 import './employees.css'
+import { ABSENCE_TYPES, formatAbsence, loadAbsences, sortAbsences } from '../abwesenheiten/absences'
+import type { Absence } from '../abwesenheiten/absences'
+import '../abwesenheiten/absences.css'
 
 function readData() {
   // Read separately so a Kita error never hides stored employee records.
@@ -12,9 +15,11 @@ function readData() {
   let store = { version: 1 as const, employees: [] as Employee[] }
   let kitaError = ''
   let employeeError = ''
+  let absences: Absence[] = [], absenceError = ''
   try { kita = loadSetup(window.localStorage) } catch { kitaError = 'Kita-Einstellungen konnten nicht geladen werden. Vorhandene Daten bleiben erhalten.' }
   try { store = loadEmployees(window.localStorage) } catch { employeeError = 'Mitarbeiterdaten konnten nicht geladen werden (Speicherzugriff, beschädigte Daten oder unbekannte Version). Vorhandene Daten werden nicht überschrieben. Bitte prüfen und neu laden.' }
-  return { kita, store, kitaError, employeeError }
+  try { absences = sortAbsences(loadAbsences(window.localStorage).absences) } catch { absenceError = 'Abwesenheiten konnten nicht geladen werden. Vorhandene Daten bleiben erhalten.' }
+  return { kita, store, kitaError, employeeError, absences, absenceError }
 }
 
 export function EmployeesPage() {
@@ -80,12 +85,16 @@ export function EmployeesPage() {
         </dl>
         {Object.keys(employee.fixedTimes).length > 0 && <div><h3>Feste Zeiten · Verbindlich (Muss)</h3><ul>{DAYS.filter(day => employee.fixedTimes[day.id]).map(day => <li key={day.id}>{day.label}: {employee.fixedTimes[day.id]!.start}–{employee.fixedTimes[day.id]!.end} Uhr</li>)}</ul></div>}
         {employee.rules.length > 0 && <div><h3>Zusätzliche Planungsregeln</h3><ul>{employee.rules.map(rule => <li key={rule.id}><strong>{rule.type === 'must' ? 'Verbindlich (Muss)' : 'Wunsch'}</strong>{rule.weekday ? ` · ${DAYS.find(day => day.id === rule.weekday)?.label}` : ''}: {rule.description}</li>)}</ul></div>}
+        <details className="employee-absences"><summary>Abwesenheiten ({initial.absenceError ? 'nicht verfügbar' : initial.absences.filter(item => item.employeeId === employee.id).length})</summary>
+          {initial.absenceError ? <p role="alert">{initial.absenceError}</p> : <ul>{initial.absences.filter(item => item.employeeId === employee.id).map(item => <li key={item.id}>{ABSENCE_TYPES[item.type]} · {formatAbsence(item)}</li>)}</ul>}
+          <a href="#abwesenheiten">Abwesenheiten verwalten</a>
+        </details>
         <div className="kita-actions">
           {canEdit && <button className="kita-button secondary" onClick={() => openEditor(employee, 'update')}>Bearbeiten<span className="employee-sr-only">: {employee.name}</span></button>}
           {!initial.employeeError && <button className="kita-button secondary" onClick={() => { setDeleting(employee); setErrors([]); setNotice('') }}>Entfernen<span className="employee-sr-only">: {employee.name}</span></button>}
         </div>
         {deleting?.id === employee.id && <div className="employee-delete" ref={deleteBox} tabIndex={-1} role="group" aria-label="Entfernen bestätigen">
-          <p><strong>{employee.name} wirklich entfernen?</strong> Alle zugehörigen Arbeitsregeln werden ebenfalls gelöscht.</p>
+          <p><strong>{employee.name} wirklich entfernen?</strong> Alle zugehörigen Arbeitsregeln werden ebenfalls gelöscht. Abwesenheiten bleiben als Historie erhalten.</p>
           <div className="kita-actions"><button className="kita-button" onClick={confirmDelete}>Endgültig entfernen</button><button className="kita-button secondary" onClick={() => { setDeleting(null); setErrors([]) }}>Abbrechen</button></div>
         </div>}
       </article>)}</div>

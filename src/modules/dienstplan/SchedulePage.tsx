@@ -3,7 +3,9 @@ import { loadSetup } from '../kita/setup'
 import { loadEmployees } from '../mitarbeiter/employees'
 import { ABSENCE_TYPES, PORTIONS, loadAbsences } from '../abwesenheiten/absences'
 import { EVENT_TYPES, listOccurrences, loadEvents } from '../termine/events'
-import { addDays, calendarWeek, dateLabel, dayEntries, loadShifts, localDate, schedulePeople, validDate } from './schedule'
+import { addDays, calendarWeek, dateLabel, dayEntries, loadShifts, localDate, schedulePeople, validDate, formatMinutes, workTime } from './schedule'
+import { ShiftEditor } from './ShiftEditor'
+import type { Shift } from './schedule'
 import type { SchedulePerson } from './schedule'
 import '../kita/kita.css'
 import './schedule.css'
@@ -26,6 +28,8 @@ export function SchedulePage() {
   const [today, setToday] = useState(localDate)
   const [selected, setSelected] = useState(localDate)
   const [dateError, setDateError] = useState('')
+  const [editor, setEditor] = useState<{ value: Shift; mode: 'create' | 'update' } | null>(null)
+  const [notice, setNotice] = useState('')
   useEffect(() => {
     const timer = window.setInterval(() => setToday(localDate()), 60_000)
     const reload = () => { setData(readSchedule()); setToday(localDate()) }
@@ -44,11 +48,27 @@ export function SchedulePage() {
     if (!validDate(date) || date < '0002-01-01' || date > '9998-12-31') { setDateError('Bitte ein gültiges Datum zwischen 0002 und 9998 auswählen.'); return }
     setSelected(date); setDateError('')
   }
+  const shiftsUnavailable = data.errors.some(error => error.startsWith('Schichten'))
+  function openShift(person: SchedulePerson, date: string) {
+    setNotice('')
+    setEditor({ value: { id: crypto.randomUUID(), employeeId: person.id, employeeName: person.name, groupId: person.groupId, date, start: '', end: '' }, mode: 'create' })
+  }
+  function closeEditor() {
+    setEditor(null)
+    window.requestAnimationFrame(() => document.getElementById('page-title')?.focus())
+  }
+  function weeklySummary(person: SchedulePerson) {
+    const totals = workTime(data.shifts.filter(shift => shift.employeeId === person.id && shift.date >= week.monday && shift.date <= week.days[6]))
+    return <small className="schedule-week-total">Woche (Mo–So): {formatMinutes(totals.net)} netto</small>
+  }
   function personDetails(person: SchedulePerson, date: string) {
     const entries = dayEntries(person.id, date, data.shifts, data.absences)
+    const total = workTime(entries.shifts)
     return <div className="schedule-details">
-      {entries.shifts.map(shift => <div className="schedule-shift" key={shift.id}><strong>{shift.start}–{shift.end}</strong><span className="schedule-group" data-tone={tone(shift.groupId)}>{group(shift.groupId)}</span>{shift.breakMinutes !== undefined && <small>Pause: {shift.breakMinutes} Min.</small>}</div>)}
+      {entries.shifts.map(shift => <div className="schedule-shift" key={shift.id}><strong>{shift.start}–{shift.end}</strong><span className="schedule-group" data-tone={tone(shift.groupId)}>{group(shift.groupId)}</span><small>Brutto {formatMinutes(workTime([shift]).gross)} · Pause {shift.breakMinutes === undefined ? 'nicht erfasst' : formatMinutes(shift.breakMinutes)} · Netto {formatMinutes(workTime([shift]).net)}</small><button className="schedule-edit" disabled={shiftsUnavailable} onClick={() => { setNotice(''); setEditor({ value: shift, mode: 'update' }) }}>Bearbeiten<span className="schedule-sr-only">: {person.name}, {dateLabel(date)}, {shift.start}–{shift.end}</span></button></div>)}
       {!entries.shifts.length && <><span className="schedule-empty">Keine Schicht eingetragen</span><span className="schedule-group" data-tone={tone(person.groupId)}>{group(person.groupId)}</span></>}
+      {!!entries.shifts.length && <small className="schedule-day-total">Tag: {formatMinutes(total.net)} netto</small>}
+      <button className="schedule-add" disabled={shiftsUnavailable || !!person.historical} onClick={() => openShift(person, date)}>+ Schicht<span className="schedule-sr-only"> für {person.name}, {dateLabel(date)}</span></button>
       {entries.absences.map(absence => <div className="schedule-absence" key={absence.id}><strong>{ABSENCE_TYPES[absence.type]}</strong><small>{PORTIONS[absence.portion]}</small></div>)}
     </div>
   }
@@ -62,8 +82,10 @@ export function SchedulePage() {
   }
   return <div className="kita-setup schedule-page">
     <div className="page-heading"><p className="eyebrow">KitaPlanio Lite</p><h1 id="page-title" tabIndex={-1}>Dienstplan</h1><p>Deine Woche im Überblick – Schichten, Abwesenheiten und Sondertermine.</p></div>
-    <p className="kita-local-note">Gespeicherte Daten aus diesem Browser. Schichten werden hier angezeigt; die Bearbeitung folgt im nächsten Schritt.</p>
+    <p className="kita-local-note">Gespeicherte Daten aus diesem Browser. Schichten und Pausen werden lokal gespeichert. Arbeitszeiten werden ohne automatische Pausenabzüge berechnet.</p>
     {data.errors.map(error => <p className="kita-errors" role="alert" key={error}>{error}</p>)}
+    {notice && <p className="kita-success" role="status">{notice}</p>}
+    {editor ? <ShiftEditor key={editor.value.id} initial={editor.value} mode={editor.mode} data={data} onCancel={closeEditor} onDone={(date, message) => { setData(readSchedule()); select(date); setNotice(message); closeEditor() }} /> : <>
     <section className="kita-card schedule-controls" aria-label="Dienstplan-Zeitraum">
       <div className="schedule-week-title" role="status"><h2>KW {week.week} · {week.year}</h2><p>{dateLabel(week.monday)}–{dateLabel(week.days[4])}</p></div>
       <div className="schedule-week-nav" aria-label="Wochennavigation"><button className="kita-button secondary" onClick={() => select(addDays(selected, -7))} aria-label="Vorherige Kalenderwoche">← Woche</button><button className="kita-button secondary" onClick={() => { const now = localDate(); setToday(now); select(now) }}>Heute</button><button className="kita-button secondary" onClick={() => select(addDays(selected, 7))} aria-label="Nächste Kalenderwoche">Woche →</button></div>
@@ -72,22 +94,23 @@ export function SchedulePage() {
       {dateError && <p className="kita-errors" role="alert">{dateError}</p>}
     </section>
     {!data.employees.length && !data.errors.length && <section className="kita-card"><h2>Dein Team fehlt noch</h2><p>Lege zuerst Mitarbeitende an. Bereits gespeicherte Einträge bleiben sichtbar.</p><a className="kita-button secondary" href="#mitarbeiter">Zum Team</a></section>}
-    {!data.shifts.some(shift => shift.date >= week.monday && shift.date <= week.days[6]) && <p className="kita-help">Für diese Woche sind keine Schichten eingetragen. Abwesenheiten und Sondertermine siehst du unabhängig davon.</p>}
+    {!shiftsUnavailable && !data.shifts.some(shift => shift.date >= week.monday && shift.date <= week.days[6]) && <p className="kita-help">Für diese Woche sind keine Schichten eingetragen. Abwesenheiten und Sondertermine siehst du unabhängig davon.</p>}
     <div className="schedule-legend" aria-label="Legende"><span className="schedule-group" data-tone="0">Gruppe</span><span className="schedule-absence">Abwesenheit</span><span className="schedule-event">Sondertermin</span></div>
     <div className="schedule-desktop">
       <p id="schedule-scroll-help" className="kita-help">Montag bis Freitag · Das Raster lässt sich bei Bedarf seitlich und nach unten scrollen. Namen und Tagesüberschriften bleiben sichtbar.</p>
       <div className="schedule-scroll" role="region" aria-label="Wochenraster Dienstplan" aria-describedby="schedule-scroll-help" tabIndex={0}>
         <table className="schedule-table"><caption className="schedule-sr-only">Dienstplan KW {week.week}, {week.year}</caption><thead><tr><th scope="col">Mitarbeitende</th>{days.map(date => <th scope="col" key={date} aria-current={date === today ? 'date' : undefined}>{dateLabel(date, true)}{date === today && <span className="schedule-today">Heute</span>}</th>)}</tr></thead><tbody>
           <tr className="schedule-event-row"><th scope="row">Sondertermine</th>{days.map(date => <td key={date}>{eventsForDay(date)}</td>)}</tr>
-          {people.map(person => <tr key={person.id}><th scope="row">{person.name}{person.historical && <small>Nicht mehr im Team</small>}</th>{days.map(date => <td key={date}>{personDetails(person, date)}</td>)}</tr>)}
+          {people.map(person => <tr key={person.id}><th scope="row">{person.name}{weeklySummary(person)}{person.historical && <small>Nicht mehr im Team</small>}</th>{days.map(date => <td key={date}>{personDetails(person, date)}</td>)}</tr>)}
         </tbody></table>
       </div>
     </div>
     <section className="schedule-mobile" aria-label="Tagesansicht">
       <div className="schedule-day-nav"><button className="kita-button secondary" aria-label="Vorheriger Tag" onClick={() => select(addDays(selected, -1))}>←</button><h2 aria-live="polite">{dateLabel(selected, true)}{selected === today && <span className="schedule-today">Heute</span>}</h2><button className="kita-button secondary" aria-label="Nächster Tag" onClick={() => select(addDays(selected, 1))}>→</button></div>
       <section className="kita-card"><h3>Sondertermine</h3>{eventsForDay(selected)}</section>
-      <div className="schedule-day-cards">{people.map(person => <article className="kita-card" key={person.id}><h3>{person.name}</h3>{person.historical && <p className="kita-help">Nicht mehr im Team</p>}{personDetails(person, selected)}</article>)}</div>
+      <div className="schedule-day-cards">{people.map(person => <article className="kita-card" key={person.id}><h3>{person.name}</h3>{weeklySummary(person)}{person.historical && <p className="kita-help">Nicht mehr im Team</p>}{personDetails(person, selected)}</article>)}</div>
       {!people.length && <p className="kita-help">Keine Mitarbeitenden oder gespeicherten Schichten für diesen Tag vorhanden.</p>}
     </section>
+    </>}
   </div>
 }

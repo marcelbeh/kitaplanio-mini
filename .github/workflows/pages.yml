@@ -24,7 +24,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - run: node --test tests/events.test.mjs tests/schedule.test.mjs tests/staffing.test.mjs
+      - run: node --test tests/events.test.mjs tests/schedule.test.mjs tests/staffing.test.mjs tests/checks.test.mjs
       - run: npm run build
       - uses: actions/upload-pages-artifact@v4
         with:

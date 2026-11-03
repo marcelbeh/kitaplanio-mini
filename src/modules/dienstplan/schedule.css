@@ -72,3 +72,13 @@ a.schedule-event:hover { text-decoration: underline; }
 .staffing-card summary { cursor: pointer; min-height: 44px; padding: 10px 0; color: var(--aubergine); }
 .staffing-windows { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
 .staffing-windows li { display: grid; gap: 6px; border-top: 1px solid var(--border); padding-top: 12px; }
+.plan-checks summary { min-height: 44px; padding: 10px 0; color: var(--aubergine); cursor: pointer; }
+.schedule-check-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+.plan-issues { list-style: none; padding: 0; display: grid; gap: 12px; }
+.plan-issue { display: grid; gap: 8px; padding: 16px; border-radius: var(--radius-sm); font-size: 13px; overflow-wrap: anywhere; }
+.plan-issue p { margin: 0; }
+.plan-conflict { background: var(--danger-soft); border-left: 3px solid var(--danger); }
+.plan-hint { background: var(--apricot-soft); border-left: 3px solid var(--warning); }
+.plan-issue .schedule-edit { width: fit-content; }
+.plan-checks [aria-pressed="true"] { background: var(--lilac-soft); border-color: var(--aubergine); }
+@media (max-width: 760px) { .schedule-check-options { grid-template-columns: minmax(0, 1fr); } }

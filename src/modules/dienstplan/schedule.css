@@ -82,3 +82,8 @@ a.schedule-event:hover { text-decoration: underline; }
 .plan-issue .schedule-edit { width: fit-content; }
 .plan-checks [aria-pressed="true"] { background: var(--lilac-soft); border-color: var(--aubergine); }
 @media (max-width: 760px) { .schedule-check-options { grid-template-columns: minmax(0, 1fr); } }
+.generator-panel summary { min-height: 44px; padding: 10px 0; cursor: pointer; color: var(--aubergine); }
+.generator-panel ul { font-size: 12px; padding-left: 20px; }
+.generator-panel li { margin-bottom: 8px; }
+.generator-confirm { border: 1px solid var(--lilac); border-radius: var(--radius-sm); background: var(--lilac-soft); padding: 16px; margin-top: 16px; }
+.schedule-proposed { background: var(--mint-soft); border: 2px dashed var(--success); }

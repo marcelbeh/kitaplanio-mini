@@ -8,9 +8,10 @@ import { deleteShift, formatMinutes, overlappingShifts, saveShift, shiftWarnings
 import type { Shift } from './schedule'
 import '../mitarbeiter/employees.css'
 
-export function ShiftEditor({ initial, mode, data, onDone, onCancel }: {
+export function ShiftEditor({ initial, mode, data, onDone, onCancel, onDraftSave, onDraftDelete }: {
   initial: Shift; mode: 'create' | 'update'
   data: { employees: Employee[]; groups: KitaGroup[]; shifts: Shift[]; absences: Absence[]; events: Event[]; errors: string[] }
+  onDraftSave?: (value: Shift) => void; onDraftDelete?: () => void
   onDone: (date: string, message: string) => void; onCancel: () => void
 }) {
   const [value, setValue] = useState(initial)
@@ -28,11 +29,19 @@ export function ShiftEditor({ initial, mode, data, onDone, onCancel }: {
   function change(patch: Partial<Shift>) { setValue({ ...value, ...patch }); setError(''); setDeleting(false) }
   function submit(event: FormEvent) {
     event.preventDefault()
-    try { saveShift(window.localStorage, draft, mode, mode === 'update' ? initial : undefined); onDone(draft.date, 'Schicht gespeichert.') }
+    try {
+      if (onDraftSave) {
+        const errors = validateShift(draft)
+        if (errors.length) throw Error(errors.join(' '))
+        if (overlappingShifts(draft, data.shifts).length) throw Error('Zeitüberschneidung: Bitte die Vorschauzeiten prüfen.')
+        onDraftSave(draft); return
+      }
+      saveShift(window.localStorage, draft, mode, mode === 'update' ? initial : undefined); onDone(draft.date, 'Schicht gespeichert.') }
     catch (error) { setError((error as Error).message) }
   }
   function remove() {
-    try { deleteShift(window.localStorage, initial); onDone(initial.date, 'Schicht gelöscht.') }
+    try { if (onDraftDelete) { onDraftDelete(); return }
+      deleteShift(window.localStorage, initial); onDone(initial.date, 'Schicht gelöscht.') }
     catch (error) { setError((error as Error).message) }
   }
   return <section className="kita-card schedule-editor employee-page" aria-label="Schicht bearbeiten">

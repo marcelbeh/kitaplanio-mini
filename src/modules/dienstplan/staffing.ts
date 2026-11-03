@@ -3,6 +3,8 @@ import type { Employee } from '../mitarbeiter/employees'
 import type { Absence } from '../abwesenheiten/absences'
 import type { Shift } from './schedule'
 
+// Explicit date-specific demand, held only in the generator draft (no storage extension).
+export type SpecialDemand = StaffingPeriod & { date: string; groupId: string }
 export type StaffingStatus = 'under' | 'matched' | 'over' | 'check' | 'unconfigured' | 'closed' | 'unspecified'
 export const STAFFING_LABELS: Record<StaffingStatus, string> = { under: '− Unterbesetzt', matched: '= Passend besetzt', over: '+ Überbesetzt', check: '? Prüfen', unconfigured: '— Nicht konfiguriert', closed: '— Geschlossen', unspecified: '— Bedarf nicht festgelegt' }
 export type StaffingWindow = { start: number; end: number; area: string; name: string; required: number | null; actual: number; possible: number; status: StaffingStatus; reasons: string[] }
@@ -15,30 +17,34 @@ export function staffingStatus(required: number | null, actual: number, uncertai
   return actual < required ? 'under' : actual > required ? 'over' : 'matched'
 }
 // Read-only calculation. Quarter-hour grid, additionally split at exact changes; all ranges are [start, end).
-export function calculateStaffing(date: string, setup: KitaSetup | null, shifts: Shift[], absences: Absence[], employees: Employee[], dataUnavailable = false): StaffingDay {
+export function calculateStaffing(date: string, setup: KitaSetup | null, shifts: Shift[], absences: Absence[], employees: Employee[], dataUnavailable = false, specialDemands: SpecialDemand[] = []): StaffingDay {
   const unknown = (note: string): StaffingDay => ({ status: 'unconfigured', windows: [], note })
   const dayOfWeek = new Date(`${date}T00:00:00Z`).getUTCDay()
   // The existing model has no date-specific weekend demand. Never reuse weekday opening hours/minima.
-  if (dayOfWeek === 0 || dayOfWeek === 6) return { status: 'unspecified', windows: [], note: 'Für diesen Wochenend-Sonderdienst ist kein konkreter Soll-Personalbedarf hinterlegt. Schichten und Arbeitszeiten bleiben sichtbar; reguläre Öffnungszeiten und Mindestbesetzungen werden nicht übertragen.' }
+  const special = specialDemands.filter(demand => demand.date === date)
+  const weekend = dayOfWeek === 0 || dayOfWeek === 6
+  if (weekend && !special.length) return { status: 'unspecified', windows: [], note: 'Für diesen Wochenend-Sonderdienst ist kein konkreter Soll-Personalbedarf hinterlegt. Schichten und Arbeitszeiten bleiben sichtbar; reguläre Öffnungszeiten und Mindestbesetzungen werden nicht übertragen.' }
   if (!setup?.completed) return unknown('Kita-Einstellungen und Sollvorgaben sind nicht vollständig eingerichtet.')
   const weekday = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date(`${date}T00:00:00Z`).getUTCDay()]
   // Same backwards-compatible weekday interpretation as KitaPage; no staffing minimum is defaulted.
-  if (!(setup.careDays ?? ['mon', 'tue', 'wed', 'thu', 'fri']).some(day => day === weekday)) return { status: 'closed', windows: [], note: 'Kein konfigurierter Öffnungstag.' }
-  const opening = minute(setup.opening.start), closing = minute(setup.opening.end)
+  if (!weekend && !(setup.careDays ?? ['mon', 'tue', 'wed', 'thu', 'fri']).some(day => day === weekday)) return { status: 'closed', windows: [], note: 'Kein konfigurierter Öffnungstag.' }
+  if (weekend && special.some(demand => !setup.groups.some(group => group.id === demand.groupId) || !Number.isFinite(minute(demand.start)) || !Number.isFinite(minute(demand.end)) || minute(demand.start) >= minute(demand.end) || minimum(demand) === null)) return unknown('Sonderdienstbedarf ist unvollständig oder ungültig.')
+  const opening = weekend ? Math.min(...special.map(demand => minute(demand.start))) : minute(setup.opening.start), closing = weekend ? Math.max(...special.map(demand => minute(demand.end))) : minute(setup.opening.end)
   const earlyEnd = minute(setup.early.end), lateStart = minute(setup.late.start)
-  if (![opening, closing, earlyEnd, lateStart].every(Number.isFinite) || opening >= earlyEnd || earlyEnd >= lateStart || lateStart >= closing || minute(setup.early.start) !== opening || minute(setup.late.end) !== closing || !setup.groups.length) return unknown('Öffnungszeiten oder Betreuungsbereiche sind nicht vollständig konfiguriert.')
+  if (!weekend && (![opening, closing, earlyEnd, lateStart].every(Number.isFinite) || opening >= earlyEnd || earlyEnd >= lateStart || lateStart >= closing || minute(setup.early.start) !== opening || minute(setup.late.end) !== closing || !setup.groups.length)) return unknown('Öffnungszeiten oder Betreuungsbereiche sind nicht vollständig konfiguriert.')
   const dayShifts = shifts.filter(shift => shift.date === date)
   const dayAbsences = absences.filter(absence => absence.startDate <= date && absence.endDate >= date)
-  const boundaries = new Set([opening, closing, earlyEnd, lateStart])
+  const groups = weekend ? setup.groups.map(group => ({ ...group, periods: special.filter(demand => demand.groupId === group.id) })) : setup.groups
+  const boundaries = new Set(weekend ? [opening, closing] : [opening, closing, earlyEnd, lateStart])
   for (let point = Math.floor(opening / 15) * 15 + 15; point < closing; point += 15) boundaries.add(point)
   for (const shift of dayShifts) for (const time of [shift.start, shift.end]) { const point = minute(time); if (point > opening && point < closing) boundaries.add(point) }
-  for (const group of setup.groups) for (const period of group.periods) for (const time of [period.start, period.end]) { const point = minute(time); if (point > opening && point < closing) boundaries.add(point) }
+  for (const group of groups) for (const period of group.periods) for (const time of [period.start, period.end]) { const point = minute(time); if (point > opening && point < closing) boundaries.add(point) }
   const points = [...boundaries].sort((a, b) => a - b)
   const windows: StaffingWindow[] = []
   for (let index = 0; index < points.length - 1; index++) {
     const start = points[index], end = points[index + 1]
-    const shared = start < earlyEnd ? setup.early : start >= lateStart ? setup.late : null
-    const areas = shared ? [{ id: start < earlyEnd ? 'early' : 'late', name: start < earlyEnd ? 'Frühbetreuung · gemeinsam' : 'Spätbetreuung · gemeinsam', periods: [shared] }] : setup.groups.map(group => ({ ...group, id: `group:${group.id}` }))
+    const shared = weekend ? null : start < earlyEnd ? setup.early : start >= lateStart ? setup.late : null
+    const areas = shared ? [{ id: start < earlyEnd ? 'early' : 'late', name: start < earlyEnd ? 'Frühbetreuung · gemeinsam' : 'Spätbetreuung · gemeinsam', periods: [shared] }] : groups.filter(group => !weekend || group.periods.some(period => minute(period.start) <= start && minute(period.end) >= end)).map(group => ({ ...group, id: `group:${group.id}` }))
     const active = dayShifts.filter(shift => minute(shift.start) <= start && minute(shift.end) >= end)
     const persons = new Map<string, Shift[]>()
     for (const shift of active) persons.set(shift.employeeId, [...(persons.get(shift.employeeId) ?? []), shift])

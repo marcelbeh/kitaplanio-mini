@@ -131,3 +131,9 @@ export function deleteShift(storage: StorageAccess, expected: Shift): Shift[] {
   storage.setItem(SHIFTS_KEY, JSON.stringify({ version: 1, shifts: next }))
   return next
 }
+
+// Keep the regular workweek compact; reveal both weekend days when selected or carrying entries.
+export function visibleScheduleDays(dates: string[], selected: string, shifts: Shift[], absences: Absence[], eventDates: string[]): string[] {
+  const showWeekend = dates.slice(5).some(date => date === selected || shifts.some(shift => shift.date === date) || eventDates.includes(date) || absences.some(absence => absence.startDate <= date && absence.endDate >= date))
+  return showWeekend ? dates : dates.slice(0, 5)
+}

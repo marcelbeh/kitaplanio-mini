@@ -63,3 +63,12 @@ a.schedule-event:hover { text-decoration: underline; }
 .schedule-form-help { margin-top: var(--space-2); }
 .schedule-conflict { color: #80501D; background: var(--apricot-soft); border-left: 3px solid var(--warning); padding: 12px; border-radius: var(--radius-sm); font-size: 12px; }
 .schedule-conflict ul { margin-bottom: 0; padding-left: 20px; }
+.staffing-card { display: grid; gap: 8px; font-size: 12px; }
+.staffing-status { display: inline-block; width: fit-content; border-radius: var(--radius-sm); padding: 5px 8px; font-size: 11px; font-weight: 600; }
+.staffing-under { color: #8C3044; background: var(--danger-soft); border-left: 3px solid var(--danger); }
+.staffing-matched { color: var(--success); background: var(--mint-soft); border-left: 3px solid var(--success); }
+.staffing-over { color: #80501D; background: var(--apricot-soft); border-left: 3px solid var(--sun); }
+.staffing-check, .staffing-unconfigured, .staffing-closed, .staffing-unspecified { color: var(--aubergine); background: var(--lilac-soft); border-left: 3px solid var(--aubergine); }
+.staffing-card summary { cursor: pointer; min-height: 44px; padding: 10px 0; color: var(--aubergine); }
+.staffing-windows { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.staffing-windows li { display: grid; gap: 6px; border-top: 1px solid var(--border); padding-top: 12px; }

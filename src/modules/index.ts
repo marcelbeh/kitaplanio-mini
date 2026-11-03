@@ -5,6 +5,6 @@ export const modules = [
   { id: 'mitarbeiter', title: 'Mitarbeiter', description: 'Hier entsteht die Übersicht für dein Team.' },
   { id: 'abwesenheiten', title: 'Abwesenheiten', description: 'Urlaub, Krankheit und weitere Abwesenheiten deines Teams.' },
   { id: 'termine', title: 'Sondertermine', description: 'Einmalige und wiederkehrende Termine für dein Team.' },
-  { id: 'dienstplan', title: 'Dienstplan', description: 'Hier entsteht die Übersicht für den Dienstplan.' },
+  { id: 'dienstplan', title: 'Dienstplan', description: 'Schichten, Abwesenheiten und Sondertermine im Wochenüberblick.' },
   { id: 'einstellungen', title: 'Einstellungen', description: 'Hier entsteht der Bereich für deine Einstellungen.' },
 ] as const

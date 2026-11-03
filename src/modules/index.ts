@@ -4,6 +4,7 @@ export const modules = [
   { id: 'kita', title: 'Kita', description: 'Hier entsteht der Bereich für deine Kita.' },
   { id: 'mitarbeiter', title: 'Mitarbeiter', description: 'Hier entsteht die Übersicht für dein Team.' },
   { id: 'abwesenheiten', title: 'Abwesenheiten', description: 'Urlaub, Krankheit und weitere Abwesenheiten deines Teams.' },
+  { id: 'termine', title: 'Sondertermine', description: 'Einmalige und wiederkehrende Termine für dein Team.' },
   { id: 'dienstplan', title: 'Dienstplan', description: 'Hier entsteht die Übersicht für den Dienstplan.' },
   { id: 'einstellungen', title: 'Einstellungen', description: 'Hier entsteht der Bereich für deine Einstellungen.' },
 ] as const

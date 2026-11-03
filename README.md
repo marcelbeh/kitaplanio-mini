@@ -116,3 +116,21 @@ Diese prüfen den gespeicherten Ablauf und die Formularaufteilung ohne Browserla
 Vite-Basis, Manifest-ID, Start-URL, Scope, PWA-Icons, Service-Worker-Registrierung und Navigation-Fallback verwenden `/kitaplanio-mini/`. Logos und Maskottchen werden relativ zum Dokument geladen. Die vorhandene Hash-Navigation benötigt keine serverseitigen Routenumleitungen. Lokale Entwicklung/Vorschau ebenfalls unter `/kitaplanio-mini/` öffnen.
 
 Nach dem Merge startet das erste Produktionsdeployment. Erst wenn der Deploy-Job erfolgreich ist, die von `actions/deploy-pages` ausgegebene `page_url` im Environment öffnen und die tatsächliche Live-Adresse bestätigen. Vorher besteht keine bestätigte Veröffentlichung. Nach Veröffentlichung im Browser Hash-Navigation, Assets, Manifest, Installation und Offline-Neuladen prüfen. Der lokale Browserlauf bleibt durch die bereits dokumentierte EPERM-Beschränkung ungeprüft; der Produktionsbuild wurde statisch auf korrekte Unterpfade und vollständig vorhandene PWA-Assets geprüft.
+
+## Abwesenheiten (P4a)
+
+Der Bereich „Abwesenheiten“ erfasst Urlaub, Krankheit, Fortbildung, Freizeitausgleich und sonstige Abwesenheiten für vorhandene Mitarbeiter. Start- und Enddatum zählen einschließlich. Ganztägige Einträge können mehrere Kalendertage umfassen; halbtägige Einträge gelten für ein Datum, wahlweise Vormittag oder Nachmittag. Halbtage legen keine Uhrzeiten oder pauschalen Arbeitsstunden fest.
+
+Die Übersicht ist chronologisch sortiert und nach Mitarbeiter sowie Zeitraum filterbar; ein Filter findet auch Einträge, die den Zeitraum nur teilweise überschneiden. Änderungen werden ausdrücklich gespeichert oder abgebrochen. Löschen benötigt eine zweite Bestätigung. Überschneidungen derselben Person werden angezeigt und beim Speichern verhindert; Vormittag und Nachmittag desselben Tages sind kombinierbar. Die eigene ID wird bei der Bearbeitung nicht als Konflikt gezählt.
+
+Mitarbeiterkarten zeigen ihre Abwesenheiten aufklappbar an. Der neue Speicherbereich `kitaplanio-lite:absences:v1` verwendet Version 1, stabile Eintrags- und Mitarbeiter-IDs, ISO-Kalenderdaten und einen Ganztags-/Halbtagswert. Ein Namenssnapshot erhält die Zuordnung historischer Einträge nach Entfernung eines Mitarbeiters; bestehende Abwesenheiten werden dabei nicht gelöscht und bleiben bearbeitbar. Aktuelle Namen haben in der Anzeige Vorrang.
+
+Kita-, Interview- und Mitarbeiterdaten werden von der Abwesenheitsverwaltung ausschließlich gelesen. Unbekannte/beschädigte Abwesenheitsdaten werden nicht überschrieben; Speicherfehler verhindern Erfolgsmeldungen. Keine Supabase-Anbindung, Synchronisierung, Urlaubs-/Sollstundenberechnung, Feiertagsbereinigung oder Dienstplanerzeugung. Das Modell ermöglicht eine spätere Berücksichtigung von Abwesenheiten durch die Planung.
+
+Gezielte Prüfungen mit vorhandenen Werkzeugen:
+
+```sh
+node --experimental-strip-types --test tests/absences.test.mjs
+```
+
+Mac-/iPhone-Bedienung einschließlich Formular, Filter und Löschbestätigung vor Freigabe manuell prüfen. Änderungen erscheinen unter der bestehenden GitHub-Pages-Adresse erst nach Merge und erfolgreichem Deployment.

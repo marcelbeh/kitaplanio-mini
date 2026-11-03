@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { modules } from '../modules'
 import { KitaPage } from '../modules/kita/KitaPage'
 import { EmployeesPage } from '../modules/mitarbeiter/EmployeesPage'
+import { AbsencesPage } from '../modules/abwesenheiten/AbsencesPage'
 import { DashboardPage } from '../modules/dashboard/DashboardPage'
 import { PlaceholderPage } from '../shared/components/PlaceholderPage'
 import { Icon } from '../shared/components/Icon'
@@ -53,13 +54,13 @@ export function App() {
     <aside className="sidebar">
       <a className="brand" href="#dashboard" aria-label="KitaPlanio Lite – Start"><img src="./brand/logo-dark.svg" width="205" height="65" alt="KitaPlanio Lite" /></a>
       <p className="sidebar-kicker">Dein Kita-Alltag</p>
-      <nav className="desktop-nav" aria-label="Hauptnavigation">{modules.map(module => <a key={module.id} href={`#${module.id}`} aria-current={active.id === module.id ? 'page' : undefined}><Icon name={module.id} /><span>{module.title}</span>{['dienstplan', 'abwesenheiten', 'einstellungen'].includes(module.id) && <span className="nav-preview" title="Vorschau" aria-label="Vorschau" />}</a>)}</nav>
+      <nav className="desktop-nav" aria-label="Hauptnavigation">{modules.map(module => <a key={module.id} href={`#${module.id}`} aria-current={active.id === module.id ? 'page' : undefined}><Icon name={module.id} /><span>{module.title}</span>{['dienstplan', 'einstellungen'].includes(module.id) && <span className="nav-preview" title="Vorschau" aria-label="Vorschau" />}</a>)}</nav>
       <div className="sidebar-bottom"><span className="sidebar-flourish" aria-hidden="true">Lite</span><p>Dienstplanung.<br />Einfach. Kita.</p><small>Mit Liebe geplant.</small></div>
     </aside>
     <div className="workspace">
       <header className="topbar"><a className="mobile-brand" href="#dashboard" aria-label="KitaPlanio Lite – Start"><img src="./brand/logo-light.svg" width="165" height="53" alt="KitaPlanio Lite" /></a><div className="breadcrumb"><span>KitaPlanio Lite</span><span aria-hidden="true">/</span><strong>{active.title}</strong></div><span className="profile-chip"><span className="profile-avatar" aria-hidden="true">C</span><span>Caro<small>Dein persönlicher Planungsraum</small></span></span></header>
       <main id="main-content" tabIndex={-1}>
-        {active.id === 'dashboard' ? <DashboardPage /> : active.id === 'kita' ? <KitaPage /> : active.id === 'mitarbeiter' ? <EmployeesPage /> : <PlaceholderPage title={active.title} description={active.description} />}
+        {active.id === 'dashboard' ? <DashboardPage /> : active.id === 'kita' ? <KitaPage /> : active.id === 'mitarbeiter' ? <EmployeesPage /> : active.id === 'abwesenheiten' ? <AbsencesPage /> : <PlaceholderPage title={active.title} description={active.description} />}
       </main>
       <footer><span>KitaPlanio Lite</span><span>Mit Liebe geplant. Mit Köpfchen gemacht.</span></footer>
     </div>

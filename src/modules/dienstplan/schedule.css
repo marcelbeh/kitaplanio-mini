@@ -53,3 +53,13 @@ a.schedule-event:hover { text-decoration: underline; }
   .schedule-day-cards h3 { margin-bottom: 12px; }
   .schedule-details { font-size: 14px; }
 }
+.schedule-add, .schedule-edit { min-height: 44px; width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; background: var(--white); color: var(--aubergine); font-size: 12px; cursor: pointer; }
+.schedule-add { border-style: dashed; }
+.schedule-add:hover, .schedule-edit:hover { background: var(--lilac-soft); }
+.schedule-add:disabled, .schedule-edit:disabled { cursor: not-allowed; color: var(--muted); }
+.schedule-day-total, .schedule-week-total { display: block; font-size: 11px; color: var(--aubergine); }
+.schedule-day-cards .schedule-week-total { margin: -4px 0 12px; }
+.schedule-time-summary { background: var(--mint-soft); padding: 12px; border-radius: var(--radius-sm); font-size: 13px; margin-top: var(--space-2); }
+.schedule-form-help { margin-top: var(--space-2); }
+.schedule-conflict { color: #80501D; background: var(--apricot-soft); border-left: 3px solid var(--warning); padding: 12px; border-radius: var(--radius-sm); font-size: 12px; }
+.schedule-conflict ul { margin-bottom: 0; padding-left: 20px; }

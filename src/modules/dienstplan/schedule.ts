@@ -1,8 +1,13 @@
 import type { StorageAccess } from '../kita/setup'
 import type { Employee } from '../mitarbeiter/employees'
+import { loadEmployees } from '../mitarbeiter/employees'
+import { loadSetup } from '../kita/setup'
+import { ABSENCE_TYPES } from '../abwesenheiten/absences'
+import { listOccurrences } from '../termine/events'
+import type { Event } from '../termine/events'
 import type { Absence } from '../abwesenheiten/absences'
 
-// First shift storage contract, shared with the forthcoming editor. This view never writes it.
+// P5a storage contract; optional breaks remain optional. No migration or automatic deductions.
 export const SHIFTS_KEY = 'kitaplanio-lite:shifts:v1'
 export type Shift = {
   id: string; employeeId: string; groupId: string; date: string; start: string; end: string
@@ -39,7 +44,7 @@ function shiftShape(value: unknown): value is Shift {
   if (!record(value) || !['id','employeeId','groupId','date','start','end'].every(key => typeof value[key] === 'string' && value[key].trim())) return false
   const shift = value as unknown as Shift
   return validDate(shift.date) && [shift.start, shift.end].every(time => /^([01]\d|2[0-3]):[0-5]\d$/.test(time)) && shift.start < shift.end &&
-    (shift.breakMinutes === undefined || Number.isSafeInteger(shift.breakMinutes) && shift.breakMinutes >= 0 && shift.breakMinutes < minutes(shift.end) - minutes(shift.start)) &&
+    (shift.breakMinutes === undefined || Number.isSafeInteger(shift.breakMinutes) && shift.breakMinutes >= 0 && shift.breakMinutes <= minutes(shift.end) - minutes(shift.start)) &&
     (shift.employeeName === undefined || typeof shift.employeeName === 'string')
 }
 export function loadShifts(storage: StorageAccess): Shift[] {
@@ -62,4 +67,67 @@ export function schedulePeople(employees: Employee[], shifts: Shift[], absences:
     ids.add(item.employeeId)
   }
   return people.sort((a, b) => a.name.localeCompare(b.name, 'de') || a.id.localeCompare(b.id))
+}
+
+export function validateShift(shift: Shift): string[] {
+  const errors: string[] = []
+  if (!shift.id.trim() || !shift.employeeId.trim()) errors.push('Bitte einen Mitarbeiter auswählen.')
+  if (!shift.groupId.trim()) errors.push('Bitte eine Gruppe auswählen.')
+  if (!validDate(shift.date) || shift.date < '0002-01-01' || shift.date > '9998-12-31') errors.push('Bitte ein gültiges Datum zwischen 0002 und 9998 auswählen.')
+  const validTimes = [shift.start, shift.end].every(time => /^([01]\d|2[0-3]):[0-5]\d$/.test(time)) && shift.start < shift.end
+  if (!validTimes) errors.push('Beginn muss vor Ende liegen. Nachtschichten über Mitternacht sind noch nicht möglich.')
+  if (shift.breakMinutes !== undefined && (!Number.isSafeInteger(shift.breakMinutes) || shift.breakMinutes < 0 || validTimes && shift.breakMinutes > minutes(shift.end) - minutes(shift.start))) errors.push('Die Pause muss eine ganze Minutenzahl ab 0 sein und darf nicht länger als die Schicht sein.')
+  return errors
+}
+export function formatMinutes(value: number): string {
+  return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`
+}
+export function workTime(shifts: Shift[]) {
+  const gross = shifts.reduce((sum, shift) => sum + minutes(shift.end) - minutes(shift.start), 0)
+  const pause = shifts.reduce((sum, shift) => sum + (shift.breakMinutes ?? 0), 0)
+  return { gross, pause, net: gross - pause }
+}
+export function overlappingShifts(value: Shift, shifts: Shift[]): Shift[] {
+  return shifts.filter(other => other.id !== value.id && other.employeeId === value.employeeId && other.date === value.date && other.start < value.end && value.start < other.end)
+}
+export function shiftWarnings(value: Shift, absences: Absence[], events: Event[], employees: Employee[]): string[] {
+  if (validateShift(value).length) return []
+  const warnings = absences.filter(absence => absence.employeeId === value.employeeId && absence.startDate <= value.date && absence.endDate >= value.date).map(absence => `${ABSENCE_TYPES[absence.type]}${absence.portion === 'full' ? '' : ' (halbtags; Uhrzeit bitte prüfen)'}.`)
+  const person = employees.find(person => person.id === value.employeeId)
+  const relevant = events.filter(event => event.wholeTeam || event.employeeIds.includes(value.employeeId) || event.groupIds.includes(value.groupId) || !!person && event.groupIds.includes(person.groupId))
+  for (const item of listOccurrences(relevant, value.date, value.date)) {
+    if (item.start < value.end && value.start < item.end) warnings.push(`Sondertermin „${events.find(event => event.id === item.eventId)!.title}“ (${item.start}–${item.end}).`)
+  }
+  return warnings
+}
+function unchanged(a: Shift, b: Shift): boolean {
+  return (['id', 'employeeId', 'groupId', 'date', 'start', 'end', 'breakMinutes', 'employeeName'] as const).every(key => a[key] === b[key])
+}
+export function saveShift(storage: StorageAccess, value: Shift, mode: 'create' | 'update', expected?: Shift): Shift[] {
+  const errors = validateShift(value)
+  if (errors.length) throw new Error(errors.join(' '))
+  if (!shiftShape(value)) throw new Error('Die Schicht hat ein ungültiges Format.')
+  const current = loadShifts(storage)
+  const old = current.find(shift => shift.id === value.id)
+  if (mode === 'create' && old) throw new Error('Diese Schicht-ID ist bereits vergeben.')
+  if (mode === 'update' && !old) throw new Error('Die Schicht wurde inzwischen gelöscht. Bitte neu laden.')
+  if (old && expected && !unchanged(old, expected)) throw new Error('Die Schicht wurde inzwischen geändert. Bitte abbrechen und neu öffnen.')
+  const employee = loadEmployees(storage).employees.find(person => person.id === value.employeeId)
+  const groups = loadSetup(storage)?.groups ?? []
+  if (!employee && (!old || old.employeeId !== value.employeeId)) throw new Error('Bitte einen vorhandenen Mitarbeiter auswählen.')
+  if (!groups.some(group => group.id === value.groupId) && (!old || old.groupId !== value.groupId)) throw new Error('Bitte eine vorhandene Gruppe auswählen.')
+  if (overlappingShifts(value, current).length) throw new Error('Zeitüberschneidung: Für diese Person ist an diesem Tag bereits eine Schicht eingetragen. Bitte Beginn und Ende prüfen.')
+  const normalized = { ...value, employeeName: employee?.name ?? old?.employeeName }
+  const next = mode === 'create' ? [...current, normalized] : current.map(shift => shift.id === value.id ? normalized : shift)
+  storage.setItem(SHIFTS_KEY, JSON.stringify({ version: 1, shifts: next }))
+  return next
+}
+export function deleteShift(storage: StorageAccess, expected: Shift): Shift[] {
+  const current = loadShifts(storage)
+  const old = current.find(shift => shift.id === expected.id)
+  if (!old) throw new Error('Die Schicht wurde bereits gelöscht. Bitte neu laden.')
+  if (!unchanged(old, expected)) throw new Error('Die Schicht wurde inzwischen geändert. Bitte abbrechen und neu öffnen.')
+  const next = current.filter(shift => shift.id !== expected.id)
+  storage.setItem(SHIFTS_KEY, JSON.stringify({ version: 1, shifts: next }))
+  return next
 }

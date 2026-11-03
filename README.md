@@ -19,7 +19,7 @@ npm run build
 npm run preview
 ```
 
-`build` prüft auch TypeScript und erzeugt `dist/`. Zum Bereitstellen den Inhalt von `dist/` unter der Domainwurzel über HTTPS ausliefern.
+`build` prüft auch TypeScript und erzeugt `dist/`. Der Produktionsbuild ist für den GitHub-Pages-Unterpfad `/kitaplanio-mini/` konfiguriert. `dist/` entsprechend unter diesem Pfad über HTTPS ausliefern.
 
 ## PWA und Offline
 
@@ -108,3 +108,11 @@ node --experimental-strip-types --test tests/interview.test.mjs
 ```
 
 Diese prüfen den gespeicherten Ablauf und die Formularaufteilung ohne Browserlayout. Die bekannte Browser-/iPhone-Prüflücke bleibt bestehen; es wurden keine zusätzlichen Browserinstallationen oder erneuten EPERM-Versuche durchgeführt.
+
+## GitHub Pages
+
+`.github/workflows/pages.yml` baut nach Änderungen an `main` mit Node.js 24, `npm ci` und `npm run build` und veröffentlicht `dist/` über das Environment `github-pages`. Ein manueller Start ist ebenfalls möglich; veröffentlicht wird ausschließlich aus `main`. GitHub Pages muss unter Settings → Pages → Source auf GitHub Actions stehen (bei der Einrichtung bereits so vorgefunden). Es sind keine zusätzlichen Secrets oder Pakete nötig.
+
+Vite-Basis, Manifest-ID, Start-URL, Scope, PWA-Icons, Service-Worker-Registrierung und Navigation-Fallback verwenden `/kitaplanio-mini/`. Logos und Maskottchen werden relativ zum Dokument geladen. Die vorhandene Hash-Navigation benötigt keine serverseitigen Routenumleitungen. Lokale Entwicklung/Vorschau ebenfalls unter `/kitaplanio-mini/` öffnen.
+
+Nach dem Merge startet das erste Produktionsdeployment. Erst wenn der Deploy-Job erfolgreich ist, die von `actions/deploy-pages` ausgegebene `page_url` im Environment öffnen und die tatsächliche Live-Adresse bestätigen. Vorher besteht keine bestätigte Veröffentlichung. Nach Veröffentlichung im Browser Hash-Navigation, Assets, Manifest, Installation und Offline-Neuladen prüfen. Der lokale Browserlauf bleibt durch die bereits dokumentierte EPERM-Beschränkung ungeprüft; der Produktionsbuild wurde statisch auf korrekte Unterpfade und vollständig vorhandene PWA-Assets geprüft.

@@ -30,7 +30,7 @@ export function DashboardPage() {
   return <div className="dashboard">
     <section className="dashboard-hero">
       <div><p className="eyebrow">Dein Kita-Alltag. Mit Überblick.</p><h1 id="page-title" tabIndex={-1}>{greeting}, Caro.</h1><p>Bereit für ein bisschen Planungszauber?</p><span className="hero-date">{now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}</span></div>
-      <img className="hero-giraffe" src="/brand/giraffe.svg" alt="" width="148" height="178" />
+      <img className="hero-giraffe" src="./brand/giraffe.svg" alt="" width="148" height="178" />
     </section>
     {overview.errors.map(error => <p key={error} className="kita-errors" role="alert">{error}</p>)}
     <div className="dashboard-metrics">

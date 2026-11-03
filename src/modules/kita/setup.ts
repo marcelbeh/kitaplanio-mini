@@ -4,6 +4,9 @@ export type KitaGroup = { id: string; name: string; periods: StaffingPeriod[] }
 export type KitaSetup = {
   version: 1
   completed: boolean
+  name?: string
+  careDays?: ('mon' | 'tue' | 'wed' | 'thu' | 'fri')[]
+  pauseNotes?: string
   opening: TimeRange
   early: StaffingPeriod
   late: StaffingPeriod
@@ -48,6 +51,7 @@ function validMinimum(value: number): boolean { return Number.isSafeInteger(valu
 // steps: 0 groups, 1 opening hours, 2 staffing; final validation checks all steps.
 export function validateSetup(setup: KitaSetup, step?: number): string[] {
   const errors: string[] = []
+  if ((step === undefined || step === 1) && setup.careDays !== undefined && (!setup.careDays.length || setup.careDays.some(day => !['mon', 'tue', 'wed', 'thu', 'fri'].includes(day)) || new Set(setup.careDays).size !== setup.careDays.length)) errors.push('Bitte mindestens einen Betreuungstag von Montag bis Freitag auswählen.')
   if (step === undefined || step === 0) {
     if (!setup.groups.length || setup.groups.length > MAX_GROUPS) errors.push('Bitte mindestens eine Gruppe anlegen (höchstens 100).')
     const names = setup.groups.map(group => group.name.trim().normalize('NFC').toLocaleLowerCase('de'))
@@ -88,6 +92,7 @@ function isRange(value: unknown): value is TimeRange { return isRecord(value) &&
 function isPeriod(value: unknown): value is StaffingPeriod { return isRange(value) && 'minimum' in value && typeof value.minimum === 'number' && Number.isFinite(value.minimum) }
 function isSetup(value: unknown): value is KitaSetup {
   if (!isRecord(value) || value.version !== 1 || typeof value.completed !== 'boolean' || !isRange(value.opening) || !isPeriod(value.early) || !isPeriod(value.late) || !Array.isArray(value.groups) || !value.groups.length || value.groups.length > MAX_GROUPS) return false
+  if ((value.name !== undefined && typeof value.name !== 'string') || (value.pauseNotes !== undefined && typeof value.pauseNotes !== 'string') || (value.careDays !== undefined && (!Array.isArray(value.careDays) || !value.careDays.every(day => typeof day === 'string')))) return false
   return value.groups.every(group => isRecord(group) && typeof group.id === 'string' && typeof group.name === 'string' && Array.isArray(group.periods) && group.periods.every(isPeriod)) && new Set(value.groups.map(group => group.id)).size === value.groups.length
 }
 

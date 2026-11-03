@@ -1,7 +1,7 @@
 import type { Employee, GroupReference, PlanningRule, Weekday } from './employees'
 import { DAYS, hoursToMinutes } from './employees'
 import type { TimeRange } from '../kita/setup'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 function TimeInputs({ value, onChange, startLabel = 'Beginn', endLabel = 'Ende' }: {
   value: TimeRange; onChange: (value: TimeRange) => void; startLabel?: string; endLabel?: string
@@ -12,11 +12,19 @@ function TimeInputs({ value, onChange, startLabel = 'Beginn', endLabel = 'Ende' 
   </div>
 }
 
-export function EmployeeForm({ initial, groups, onSave, onCancel }: {
-  initial: Employee; groups: GroupReference[]; onSave: (employee: Employee) => void; onCancel: () => void
+export function EmployeeForm({ initial, groups, onSave, onCancel, part = 'all', embedded = false, hoursInput, onDraftChange }: {
+  initial: Employee; groups: GroupReference[]; onSave?: (employee: Employee) => void; onCancel?: () => void
+  part?: 'all' | 'team' | 'rules'; embedded?: boolean; hoursInput?: string
+  onDraftChange?: (employee: Employee, hours: string) => void
 }) {
   const [draft, setDraft] = useState(initial)
-  const [hours, setHours] = useState(initial.weeklyMinutes ? String(initial.weeklyMinutes / 60).replace('.', ',') : '')
+  const [hours, setHours] = useState(hoursInput ?? (initial.weeklyMinutes ? String(initial.weeklyMinutes / 60).replace('.', ',') : ''))
+  const draftCallback = useRef(onDraftChange)
+  useEffect(() => { draftCallback.current = onDraftChange })
+  useEffect(() => {
+    const minutes = hoursToMinutes(hours)
+    draftCallback.current?.({ ...draft, weeklyMinutes: Number.isFinite(minutes) ? minutes : 0 }, hours)
+  }, [draft, hours])
   function change(patch: Partial<Employee>) { setDraft({ ...draft, ...patch }) }
   function toggleWorkday(day: Weekday) {
     const selected = draft.workdays.includes(day)
@@ -27,8 +35,8 @@ export function EmployeeForm({ initial, groups, onSave, onCancel }: {
   function updateRule(index: number, patch: Partial<PlanningRule>) {
     change({ rules: draft.rules.map((rule, i) => index === i ? { ...rule, ...patch } : rule) })
   }
-  return <form noValidate onSubmit={event => { event.preventDefault(); onSave({ ...draft, weeklyMinutes: hoursToMinutes(hours) }) }}>
-    <section className="kita-card">
+  const fields = <>
+    {part !== 'rules' && <section className="kita-card">
       <h3>Stammdaten</h3>
       <div className="employee-grid">
         <label>Name<input required type="text" value={draft.name} onChange={e => change({ name: e.target.value })} /></label>
@@ -40,11 +48,12 @@ export function EmployeeForm({ initial, groups, onSave, onCancel }: {
         <label>Qualifikation<input required type="text" value={draft.qualification} onChange={e => change({ qualification: e.target.value })} /></label>
         <label>Vertragliche Wochenstunden<input required type="text" inputMode="decimal" value={hours} placeholder="z. B. 38,5" onChange={e => setHours(e.target.value)} /></label>
       </div>
+    </section>}
+    {part !== 'team' && <>
       <fieldset className="employee-days"><legend>Reguläre Arbeitstage</legend>
         <p className="kita-help">Mindestens einen Tag auswählen. Beim Abwählen entfallen die festen Zeiten dieses Tages.</p>
         <div className="employee-day-options">{DAYS.map(day => <label className="employee-check" key={day.id}><input type="checkbox" checked={draft.workdays.includes(day.id)} onChange={() => toggleWorkday(day.id)} />{day.label}</label>)}</div>
       </fieldset>
-    </section>
     <fieldset className="kita-card"><legend>Möglicher Arbeitsrahmen</legend>
       <TimeInputs value={draft.availability} startLabel="Frühester Arbeitsbeginn" endLabel="Spätestes Arbeitsende" onChange={availability => change({ availability })} />
     </fieldset>
@@ -75,6 +84,10 @@ export function EmployeeForm({ initial, groups, onSave, onCancel }: {
       </fieldset>)}
       <button type="button" className="kita-button secondary" onClick={() => change({ rules: [...draft.rules, { id: crypto.randomUUID(), description: '', type: 'must', weekday: null }] })}>Regel hinzufügen</button>
     </section>
+    </>}
+  </>
+  return embedded ? <div>{fields}</div> : <form noValidate onSubmit={event => { event.preventDefault(); onSave?.({ ...draft, weeklyMinutes: hoursToMinutes(hours) }) }}>
+    {fields}
     <div className="kita-actions"><button type="submit" className="kita-button">Speichern bestätigen</button><button type="button" className="kita-button secondary" onClick={onCancel}>Abbrechen</button></div>
   </form>
 }

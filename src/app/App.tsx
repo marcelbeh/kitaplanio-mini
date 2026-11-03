@@ -5,8 +5,12 @@ import { EmployeesPage } from '../modules/mitarbeiter/EmployeesPage'
 import { DashboardPage } from '../modules/dashboard/DashboardPage'
 import { PlaceholderPage } from '../shared/components/PlaceholderPage'
 import { Icon } from '../shared/components/Icon'
+import { shouldStartInterview } from '../modules/kita/interview'
 
 function currentModule() {
+  if (!window.location.hash) {
+    try { if (shouldStartInterview(window.localStorage)) return modules.find(module => module.id === 'kita')! } catch { /* Keep the dashboard available when local data cannot be read. */ }
+  }
   return modules.find(module => module.id === window.location.hash.slice(1)) ?? modules[0]
 }
 const mobileItems = [

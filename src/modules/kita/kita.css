@@ -52,3 +52,7 @@
   .kita-actions { gap: 12px; }
   .kita-actions > button { flex: 1 1 auto; }
 }
+
+.interview-progress { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.interview-members .kita-button { max-width: 100%; overflow-wrap: anywhere; }
+@media (max-width: 760px) { .interview-progress { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

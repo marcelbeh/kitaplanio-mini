@@ -88,3 +88,23 @@ node --experimental-strip-types --test tests/premium-ui.test.mjs
 ```
 
 Der Check prüft Dashboard-Daten, Speicherfehler, ausbleibende Schreibzugriffe, Vorschaukennzeichnung und vorhandene Navigationsziele. Der Browserlauf wurde durch `listen EPERM 127.0.0.1:4173` vor dem Browserstart blockiert. Deshalb keine echten Desktop-/Smartphone-Screenshots; mobile Mehr-Navigation, Umbruch, Fokus und visuelle Darstellung sind manuell nachzuprüfen. Keine wiederholten Browser- oder Installationsversuche.
+
+## Geführtes Einrichtungsinterview (P3.6b)
+
+Der vorhandene Kita-Assistent führt jetzt durch Kita/Gruppen, Öffnungszeiten, Personalbedarf, Team, Arbeitsregeln und Abschluss. Personalbedarf wird jeweils für einen Betreuungsbereich und Teamangaben jeweils für eine Person bearbeitet. Das vorhandene Mitarbeiterformular wird für Stammdaten und Arbeitsregeln wiederverwendet.
+
+Neu sind optionale Kita-Namen und Pausenhinweise sowie ausgewählte Betreuungstage Mo–Fr mit einheitlichen Zeiten. Alte Datensätze ohne diese optionalen Felder bleiben gültig; die bisherigen Mo–Fr-Zeiten gelten unverändert. Bereits abgeschlossene Einrichtungen behalten die Gruppensperre. Neue Personalbedarfe und Regeln werden nicht vorausgefüllt. Pausenhinweise sind Freitext; keine rechtlichen Werte, Auswertung oder Berechnung. Wochenendbetreuung und unterschiedliche tägliche Öffnungszeiten sind nicht enthalten.
+
+Interviewantworten liegen separat unter `kitaplanio-lite:interview:v1` (Version 1), einschließlich Schritt, Roh-Stundenangabe, ausgewählter Person und Pausenstatus. Antworten werden automatisch zwischengespeichert, ohne gültige Stammdaten zu verändern. „Später fortsetzen“ führt zum Dashboard; dort ist ein Fortsetzen möglich. Neue, noch nicht eingerichtete Installationen öffnen das Interview beim Start ohne Bereichslink automatisch. Bestehende abgeschlossene Einrichtungen werden nicht ungefragt umgeleitet.
+
+Erst der bestätigte Abschluss übernimmt gültige Angaben mit den vorhandenen Speicherfunktionen. Seit Beginn anderweitig geänderte Stammdaten werden erkannt und nicht überschrieben. Auf ausdrückliche Bestätigung lassen sich aktuelle Stammdaten neu einlesen (verwirft die Interviewantworten). Unveränderte bestehende Datensätze bleiben bytegenau erhalten. Bei fehlgeschlagenen Schreibvorgängen wird die vorherige Belegung wiederhergestellt; Browser-Speicherung ersetzt keine transaktionale Datenbank. Ein Abschlussmarker verhindert einen automatischen Neustart. Teamdaten bleiben direkt bearbeitbar; Kita-Angaben können über den bestehenden Assistenten bearbeitet werden.
+
+Nach Abschluss erscheint das Dashboard mit „Ersten Dienstplan erstellen“. Dieser Link öffnet weiterhin ausschließlich die vorhandene Dienstplan-Vorschau; es gibt keine neue Planungsautomatik.
+
+Gezielte Durchlauf-, Unterbrechungs-, Wiederaufnahme-, Abschluss- und Datenerhaltprüfungen:
+
+```sh
+node --experimental-strip-types --test tests/interview.test.mjs
+```
+
+Diese prüfen den gespeicherten Ablauf und die Formularaufteilung ohne Browserlayout. Die bekannte Browser-/iPhone-Prüflücke bleibt bestehen; es wurden keine zusätzlichen Browserinstallationen oder erneuten EPERM-Versuche durchgeführt.

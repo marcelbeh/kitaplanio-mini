@@ -73,7 +73,7 @@ export function validateEmployee(employee: Employee, groups?: GroupReference[]):
 
 function record(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value) }
 function range(value: unknown): value is TimeRange { return record(value) && typeof value.start === 'string' && typeof value.end === 'string' }
-function employeeShape(value: unknown): value is Employee {
+export function employeeShape(value: unknown): value is Employee {
   if (!record(value) || !['id', 'name', 'groupId', 'qualification'].every(key => typeof value[key] === 'string') || typeof value.weeklyMinutes !== 'number' || !Array.isArray(value.workdays) || !value.workdays.every(isDay) || !range(value.availability) || !record(value.fixedTimes) || !Object.values(value.fixedTimes).every(range) || !Array.isArray(value.rules)) return false
   return value.rules.every(rule => record(rule) && typeof rule.id === 'string' && typeof rule.description === 'string' && (rule.type === 'must' || rule.type === 'wish') && (rule.weekday === null || isDay(rule.weekday)))
 }

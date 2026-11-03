@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { loadSetup } from '../kita/setup'
 import { loadEmployees } from '../mitarbeiter/employees'
+import { loadInterview } from '../kita/interview'
 import { Icon } from '../../shared/components/Icon'
 
 function readOverview() {
@@ -8,6 +9,7 @@ function readOverview() {
   let employees: number | null = null
   let completed = false
   let draft = false
+  let interview: 'draft' | 'completed' | null = null
   const errors: string[] = []
   try {
     const kita = loadSetup(window.localStorage)
@@ -17,7 +19,8 @@ function readOverview() {
   } catch { errors.push('Kita-Einstellungen konnten nicht geladen werden. Vorhandene Daten bleiben unverändert.') }
   try { employees = loadEmployees(window.localStorage).employees.length }
   catch { errors.push('Mitarbeiterdaten konnten nicht geladen werden. Vorhandene Daten bleiben unverändert.') }
-  return { groups, employees, completed, draft, errors }
+  try { interview = loadInterview(window.localStorage)?.status ?? null } catch { errors.push('Der Interview-Zwischenstand konnte nicht geladen werden. Vorhandene Daten bleiben unverändert.') }
+  return { groups, employees, completed, draft, interview, errors }
 }
 export function DashboardPage() {
   const [overview] = useState(readOverview)
@@ -42,7 +45,7 @@ export function DashboardPage() {
         <div className="week-skeleton" aria-label="Wochenplan-Vorschau ohne Planungsdaten">{['Mo', 'Di', 'Mi', 'Do', 'Fr'].map(day => <div className="week-preview-day" key={day}><span>{day}</span><div className="empty-shift" /><small>Noch kein Plan</small></div>)}</div>
         <div className="preview-note"><Icon name="dienstplan" /><p>Dienstplanung ist noch nicht verfügbar. Besetzung und Konflikte werden noch nicht berechnet.</p></div>
       </section>
-      <aside className="surface next-steps"><span className="round-icon"><Icon name="sparkles" /></span><h2>Ein guter nächster Schritt</h2><p>{!overview.completed ? 'Mit den Kita-Einstellungen schaffst du eine klare Grundlage für deinen Alltag.' : overview.employees === 0 ? 'Noch niemand an Bord? Dann holen wir dein Team dazu.' : 'Deine Kita und dein Team sind an einem Ort. Namen, Zeiten und Arbeitsregeln kannst du jederzeit prüfen.'}</p><a className="kita-button" href={!overview.completed ? '#kita' : '#mitarbeiter'}>{!overview.completed ? 'Kita einrichten' : overview.employees === 0 ? 'Team anlegen' : 'Zum Team'}<Icon name="arrow" /></a><div className="coffee-note"><Icon name="coffee" /><span>Mit Liebe geplant.<br />Mit Köpfchen gemacht.</span></div></aside>
+      <aside className="surface next-steps"><span className="round-icon"><Icon name="sparkles" /></span><h2>Ein guter nächster Schritt</h2><p>{overview.interview === 'completed' ? 'Die Einrichtung ist abgeschlossen. Der Dienstplanbereich ist derzeit eine Vorschau.' : overview.interview === 'draft' ? 'Dein Interview ist zwischengespeichert. Du kannst genau dort weitermachen.' : !overview.completed ? 'Mit den Kita-Einstellungen schaffst du eine klare Grundlage für deinen Alltag.' : overview.employees === 0 ? 'Noch niemand an Bord? Dann holen wir dein Team dazu.' : 'Deine Kita und dein Team sind an einem Ort. Namen, Zeiten und Arbeitsregeln kannst du jederzeit prüfen.'}</p><a className="kita-button" href={overview.interview === 'completed' ? '#dienstplan' : overview.interview === 'draft' || !overview.completed ? '#kita' : '#mitarbeiter'}>{overview.interview === 'completed' ? 'Ersten Dienstplan erstellen' : overview.interview === 'draft' ? 'Interview fortsetzen' : !overview.completed ? 'Kita einrichten' : overview.employees === 0 ? 'Team anlegen' : 'Zum Team'}<Icon name="arrow" /></a><div className="coffee-note"><Icon name="coffee" /><span>Mit Liebe geplant.<br />Mit Köpfchen gemacht.</span></div></aside>
     </div>
   </div>
 }

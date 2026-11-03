@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { modules } from '../modules'
 import { KitaPage } from '../modules/kita/KitaPage'
+import { EmployeesPage } from '../modules/mitarbeiter/EmployeesPage'
 import { PlaceholderPage } from '../shared/components/PlaceholderPage'
 
 function currentModule() {
@@ -40,7 +41,9 @@ export function App() {
       </aside>
       <div className="workspace">
         <header className="topbar"><span>Dein Kita-Alltag</span><span className="edition">KitaPlanio Lite</span></header>
-        <main id="main-content">{active.id === 'kita' ? <KitaPage /> : <PlaceholderPage title={active.title} description={active.description} />}</main>
+        <main id="main-content">
+          {active.id === 'kita' ? <KitaPage /> : active.id === 'mitarbeiter' ? <EmployeesPage /> : <PlaceholderPage title={active.title} description={active.description} />}
+        </main>
         <footer>Einfach organisiert. Gemeinsam geplant.</footer>
       </div>
     </div>

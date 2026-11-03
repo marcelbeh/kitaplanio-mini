@@ -1,6 +1,6 @@
 # KitaPlanio Lite
 
-Eigenständige private PWA auf Basis von React, TypeScript und Vite. P1 liefert die responsive Grundoberfläche. P2 ergänzt im Bereich „Kita“ einen geführten Einrichtungsassistenten; die anderen Bereiche bleiben Platzhalter. Keine Datenbank, Authentifizierung oder Planungslogik.
+Eigenständige private PWA auf Basis von React, TypeScript und Vite. P1 liefert die responsive Grundoberfläche. P2 ergänzt im Bereich „Kita“ einen geführten Einrichtungsassistenten, P3 die Mitarbeiterverwaltung mit Arbeitsregeln. Die übrigen Bereiche bleiben Platzhalter. Keine Datenbank, Authentifizierung oder Planungslogik.
 
 ## Lokal starten
 
@@ -54,3 +54,21 @@ node --experimental-strip-types --test tests/kita-setup.test.mjs
 ```
 
 Der Check prüft Validierung, Gruppensperre, Speicherfehler und Wiederherstellung einschließlich der serverseitig gerenderten Abschlussansicht. Er ersetzt keinen Browser- oder iPhone-Test. Für einen manuellen Check: `npm run preview`, Einrichtung unter „Kita“ durchlaufen, neu laden, zulässige Einstellungen bearbeiten und die Ansicht bei 390 px Breite prüfen.
+
+## Mitarbeiter & Arbeitsregeln (P3)
+
+Im Bereich „Mitarbeiter“ lassen sich Mitarbeiter anlegen, bearbeiten und nach ausdrücklicher Bestätigung entfernen. Formularänderungen werden erst mit „Speichern bestätigen“ übernommen; „Abbrechen“ verwirft sie. Stammgruppen kommen ausschließlich aus der abgeschlossenen P2-Einrichtung und werden per Gruppen-ID referenziert. Umbenannte Gruppen erscheinen beim erneuten Öffnen mit ihrem aktuellen Namen. Ohne abgeschlossene Kita-Einrichtung ist keine Mitarbeiteranlage möglich; fehlende Gruppen löschen keine Mitarbeiterdaten.
+
+Erfasst werden Name, Stammgruppe, frei eingegebene Qualifikation, vertragliche Wochenstunden, reguläre Arbeitstage (Mo–Fr), ein möglicher Arbeitsrahmen, optionale verbindliche Tageszeiten sowie zusätzliche Muss-/Wunsch-Regeln mit optionalem Wochentag. Stunden können mit Komma oder Punkt eingegeben werden; gespeichert werden ganze Vertragsminuten, ohne stilles Runden. Freie Regeltexte werden nicht interpretiert.
+
+Plausibilitätsprüfung: Pflichtfelder, gültige Gruppenreferenz, positive Vertragsstunden, mindestens ein regulärer Arbeitstag, gültige Zeitfenster, feste Zeiten innerhalb des Arbeitsrahmens und nur an regulären Tagen. Die Wochenstunden dürfen die verfügbare Bruttozeit nicht überschreiten. Die exakte Planbarkeit nach Pausen wird noch nicht berechnet: Gesetzliche Pausen sollen später automatisch eingeplant werden und zählen nicht zur Arbeitszeit. Vertragliche Wochenstunden sind später exakt einzuhalten; Urlaub, Krankheit und Feiertage werden mit den jeweils geltenden Sollstunden ohne Nacharbeit berücksichtigt. P3 berechnet noch keine Tages-Sollstunden.
+
+Speicherung: eigener Schlüssel `kitaplanio-lite:employees:v1`, Datenversion `1`, stabile Mitarbeiter- und Regel-IDs. P2-Kitadaten werden ausschließlich gelesen. Beschädigte oder unbekannte Mitarbeiterdaten werden nicht überschrieben. Keine Datenbank, Anmeldung oder Synchronisierung.
+
+Gezielte P3-Prüfungen mit den vorhandenen Werkzeugen:
+
+```sh
+node --experimental-strip-types --test tests/employees.test.mjs
+```
+
+Geprüft werden CRUD, Validierung, Gruppenreferenzen, versionierte Speicherung, Speicherfehler, unveränderte P2-Daten und serverseitig gerenderte Karten/Formularfelder. Interaktive Bestätigungen, Abbrechen und die iPhone-Darstellung bleiben manuell im Browser zu prüfen; Renderprüfungen ersetzen dies nicht.

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 105" role="img" aria-label="KitaPlanio Lite"><g transform="translate(0,-4) scale(.44)">
+  <g stroke="#4A1F55" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M77 166 68 226M126 169l9 57" fill="#FFF0C8"/>
+    <path d="M71 123C39 125 25 108 30 96c14-9 34-3 48 8M131 99c15-22 38-28 48-18 2 20-17 35-37 35" fill="#FFF0C8"/>
+    <path d="m80 89-9-34M113 80l1-36M137 91l16-31"/>
+    <path d="M64 96c-4 17-3 31 5 40-12 16-10 34 6 43 20 13 56 11 72-7 12-14 10-30 1-46-8-15-4-31-19-39-20-12-51-9-65 9Z" fill="#FFF0C8"/>
+    <path d="M78 132q6-9 12 0M123 128q6-9 12 0M101 161q9 8 18-1"/>
+    <circle cx="69" cy="46" r="10" fill="#F4C85D"/>
+    <circle cx="114" cy="33" r="10" fill="#F4C85D"/>
+    <circle cx="157" cy="51" r="10" fill="#F4C85D"/>
+  </g>
+  <path d="M41 101q15-1 24 8-14 1-24-8M151 101q10-14 17-13-3 11-17 13" fill="#FFC8A3"/>
+  <ellipse cx="79" cy="150" rx="10" ry="8" fill="#FFC8A3"/>
+  <ellipse cx="137" cy="148" rx="8" ry="7" fill="#FFC8A3"/>
+  <path d="m74 192 12 6-4 15-12-6M112 181l13 10-9 10-9-10M92 219l14-8 9 15H90" fill="#E9B85A"/>
+  <path d="m173 141 11-8M175 157l13-1" stroke="#F4C85D" stroke-width="5" stroke-linecap="round"/>
+</g><text x="88" y="54" font-family="Avenir Next,Trebuchet MS,sans-serif" font-size="37" font-weight="700" fill="#4A1F55" letter-spacing="-1.6">KitaPlanio</text><text x="234" y="88" font-family="Bradley Hand,Segoe Print,cursive" font-size="34" font-style="italic" fill="#8960AC">Lite</text><path d="M233 94q29 5 64-5" fill="none" stroke="#BDA3E6" stroke-width="2.5" stroke-linecap="round"/></svg>

@@ -1,17 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" fill="none">
-  <g stroke="#4A1F55" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M77 166 68 226M126 169l9 57" fill="#FFF0C8"/>
-    <path d="M71 123C39 125 25 108 30 96c14-9 34-3 48 8M131 99c15-22 38-28 48-18 2 20-17 35-37 35" fill="#FFF0C8"/>
-    <path d="m80 89-9-34M113 80l1-36M137 91l16-31"/>
-    <path d="M64 96c-4 17-3 31 5 40-12 16-10 34 6 43 20 13 56 11 72-7 12-14 10-30 1-46-8-15-4-31-19-39-20-12-51-9-65 9Z" fill="#FFF0C8"/>
-    <path d="M78 132q6-9 12 0M123 128q6-9 12 0M101 161q9 8 18-1"/>
-    <circle cx="69" cy="46" r="10" fill="#F4C85D"/>
-    <circle cx="114" cy="33" r="10" fill="#F4C85D"/>
-    <circle cx="157" cy="51" r="10" fill="#F4C85D"/>
-  </g>
-  <path d="M41 101q15-1 24 8-14 1-24-8M151 101q10-14 17-13-3 11-17 13" fill="#FFC8A3"/>
-  <ellipse cx="79" cy="150" rx="10" ry="8" fill="#FFC8A3"/>
-  <ellipse cx="137" cy="148" rx="8" ry="7" fill="#FFC8A3"/>
-  <path d="m74 192 12 6-4 15-12-6M112 181l13 10-9 10-9-10M92 219l14-8 9 15H90" fill="#E9B85A"/>
-  <path d="m173 141 11-8M175 157l13-1" stroke="#F4C85D" stroke-width="5" stroke-linecap="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 250" role="img" aria-label="Große und kleine caro. Giraffe"><g stroke="#5A1F5B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+<path d="M43 225C45 172 53 129 72 89L119 84C135 125 134 175 145 225" fill="#FFE5C7"/>
+<path d="M73 63C50 34 21 42 35 63Q48 80 70 74M118 52C136 26 166 35 147 56L128 67" fill="#FFC84D"/>
+<path d="M84 52 78 27M112 47 114 21" fill="none"/>
+<circle cx="77" cy="24" r="7" fill="#5A1F5B"/><circle cx="115" cy="18" r="7" fill="#5A1F5B"/>
+<path d="M68 76C66 46 108 39 125 60C131 69 132 78 144 88C161 104 151 123 132 125C109 129 86 119 80 101" fill="#FFE5C7"/>
+<path d="M90 80q4-9 10-1M118 77q4-9 9-1M122 109q8 5 13-2" fill="none"/>
+<circle cx="142" cy="102" r="2" fill="#5A1F5B" stroke="none"/>
+<path d="M103 225C103 204 105 179 111 161L143 160C151 178 155 204 152 225" fill="#FFE5C7"/>
+<path d="M114 151q-26-25-29-6 0 12 19 17M144 147q22-17 28-2 1 12-20 14" fill="#FFC84D"/>
+<path d="m119 144-2-14m21 12 4-14"/><circle cx="117" cy="128" r="4" fill="#5A1F5B"/><circle cx="143" cy="126" r="4" fill="#5A1F5B"/>
+<path d="M106 156C109 137 139 137 148 154C153 163 166 162 169 171C172 183 152 190 138 183C118 181 109 173 106 166" fill="#FFE5C7"/>
+<path d="M119 159q4-7 8 0m18 11q5 5 10 0" fill="none"/>
+</g>
+<g fill="#FFC84D"><path d="M59 114q22-5 16 14t-20 8Z"/><path d="M48 161q20-9 21 8t-23 17Z"/><path d="M88 130q21 1 13 17t-17 2Z"/><path d="M79 183q18-8 20 8t-23 16Z"/><path d="M121 197q18-7 18 7t-19 9Z"/></g>
+<g fill="#F3BDD2"><ellipse cx="91" cy="99" rx="7" ry="4"/><ellipse cx="121" cy="171" rx="5" ry="3"/></g><path d="M180 74C158 52 164 27 178 34C185 38 184 49 184 49C200 16 224 39 204 57Z" fill="none" stroke="#FFC84D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>

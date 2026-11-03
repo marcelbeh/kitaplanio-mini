@@ -61,7 +61,7 @@ export function EmployeesPage() {
   }
 
   return <div className="kita-setup employee-page">
-    <div className="page-heading"><p className="eyebrow">KitaPlanio Lite</p><h1 id="page-title" tabIndex={-1}>Mitarbeiter</h1><p>Dein Team und seine individuellen Arbeitsregeln.</p></div>
+    <div className="page-heading"><p className="eyebrow">caro.</p><h1 id="page-title" tabIndex={-1}>Mitarbeiter</h1><p>Dein Team und seine individuellen Arbeitsregeln.</p></div>
     <p className="kita-local-note">Lokal in diesem Browser gespeichert · keine Synchronisierung.</p>
     <details className="employee-policy"><summary>Vorgaben für die spätere Planung</summary><p>Vertragliche Wochenstunden sind später exakt einzuhalten. Urlaub, Krankheit und Feiertage werden mit den geltenden vertraglichen Sollstunden berücksichtigt – ohne Nacharbeit. Gesetzliche Pausen werden automatisch eingeplant und zählen nicht als Arbeitszeit. P3 erfasst nur Daten; es berechnet weder Pausen, Tages-Sollstunden noch Dienstpläne.</p></details>
     {initial.kitaError && <p role="alert" className="kita-errors">{initial.kitaError}</p>}

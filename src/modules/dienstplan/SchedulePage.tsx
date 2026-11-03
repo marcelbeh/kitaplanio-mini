@@ -81,7 +81,7 @@ export function SchedulePage() {
     })}</div>
   }
   return <div className="kita-setup schedule-page">
-    <div className="page-heading"><p className="eyebrow">KitaPlanio Lite</p><h1 id="page-title" tabIndex={-1}>Dienstplan</h1><p>Deine Woche im Überblick – Schichten, Abwesenheiten und Sondertermine.</p></div>
+    <div className="page-heading"><p className="eyebrow">caro.</p><h1 id="page-title" tabIndex={-1}>Dienstplan</h1><p>Deine Woche im Überblick – Schichten, Abwesenheiten und Sondertermine.</p></div>
     <p className="kita-local-note">Gespeicherte Daten aus diesem Browser. Schichten und Pausen werden lokal gespeichert. Arbeitszeiten werden ohne automatische Pausenabzüge berechnet.</p>
     {data.errors.map(error => <p className="kita-errors" role="alert" key={error}>{error}</p>)}
     {notice && <p className="kita-success" role="status">{notice}</p>}

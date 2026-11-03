@@ -1,6 +1,7 @@
 // Small, consistent 24px line icons; no runtime icon library needed.
-export type IconName = 'dashboard' | 'kita' | 'mitarbeiter' | 'abwesenheiten' | 'dienstplan' | 'einstellungen' | 'menu' | 'arrow' | 'check' | 'coffee' | 'clock' | 'sparkles'
+export type IconName = 'termine' | 'dashboard' | 'kita' | 'mitarbeiter' | 'abwesenheiten' | 'dienstplan' | 'einstellungen' | 'menu' | 'arrow' | 'check' | 'coffee' | 'clock' | 'sparkles'
 const paths: Record<IconName, string[]> = {
+  termine: ['M4 5h16v16H4Z', 'M8 3v4M16 3v4M4 10h16', 'M8 14h3M8 17h7'],
   dashboard: ['m3 10 9-7 9 7', 'M5 9v12h14V9', 'M9 21v-8h6v8'],
   kita: ['M4 21V7l8-4 8 4v14H4Z', 'M9 21v-5h6v5', 'M8 9h.01M16 9h.01M8 12h.01M16 12h.01'],
   mitarbeiter: ['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M16 3a4 4 0 0 1 0 8', 'M22 21v-2a4 4 0 0 0-3-3.87', 'M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0'],

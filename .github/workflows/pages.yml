@@ -3,6 +3,8 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -22,6 +24,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - run: node tests/events.test.mjs
       - run: npm run build
       - uses: actions/upload-pages-artifact@v4
         with:

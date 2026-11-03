@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { modules } from '../modules'
 import { KitaPage } from '../modules/kita/KitaPage'
 import { EmployeesPage } from '../modules/mitarbeiter/EmployeesPage'
+import { EventsPage } from '../modules/termine/EventsPage'
 import { AbsencesPage } from '../modules/abwesenheiten/AbsencesPage'
 import { DashboardPage } from '../modules/dashboard/DashboardPage'
 import { PlaceholderPage } from '../shared/components/PlaceholderPage'
@@ -60,7 +61,7 @@ export function App() {
     <div className="workspace">
       <header className="topbar"><a className="mobile-brand" href="#dashboard" aria-label="KitaPlanio Lite – Start"><img src="./brand/logo-light.svg" width="165" height="53" alt="KitaPlanio Lite" /></a><div className="breadcrumb"><span>KitaPlanio Lite</span><span aria-hidden="true">/</span><strong>{active.title}</strong></div><span className="profile-chip"><span className="profile-avatar" aria-hidden="true">C</span><span>Caro<small>Dein persönlicher Planungsraum</small></span></span></header>
       <main id="main-content" tabIndex={-1}>
-        {active.id === 'dashboard' ? <DashboardPage /> : active.id === 'kita' ? <KitaPage /> : active.id === 'mitarbeiter' ? <EmployeesPage /> : active.id === 'abwesenheiten' ? <AbsencesPage /> : <PlaceholderPage title={active.title} description={active.description} />}
+        {active.id === 'dashboard' ? <DashboardPage /> : active.id === 'kita' ? <KitaPage /> : active.id === 'mitarbeiter' ? <EmployeesPage /> : active.id === 'abwesenheiten' ? <AbsencesPage /> : active.id === 'termine' ? <EventsPage /> : <PlaceholderPage title={active.title} description={active.description} />}
       </main>
       <footer><span>KitaPlanio Lite</span><span>Mit Liebe geplant. Mit Köpfchen gemacht.</span></footer>
     </div>

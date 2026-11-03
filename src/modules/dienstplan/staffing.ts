@@ -3,8 +3,8 @@ import type { Employee } from '../mitarbeiter/employees'
 import type { Absence } from '../abwesenheiten/absences'
 import type { Shift } from './schedule'
 
-export type StaffingStatus = 'under' | 'matched' | 'over' | 'check' | 'unconfigured' | 'closed'
-export const STAFFING_LABELS: Record<StaffingStatus, string> = { under: '− Unterbesetzt', matched: '= Passend besetzt', over: '+ Überbesetzt', check: '? Prüfen', unconfigured: '— Nicht konfiguriert', closed: '— Geschlossen' }
+export type StaffingStatus = 'under' | 'matched' | 'over' | 'check' | 'unconfigured' | 'closed' | 'unspecified'
+export const STAFFING_LABELS: Record<StaffingStatus, string> = { under: '− Unterbesetzt', matched: '= Passend besetzt', over: '+ Überbesetzt', check: '? Prüfen', unconfigured: '— Nicht konfiguriert', closed: '— Geschlossen', unspecified: '— Bedarf nicht festgelegt' }
 export type StaffingWindow = { start: number; end: number; area: string; name: string; required: number | null; actual: number; possible: number; status: StaffingStatus; reasons: string[] }
 export type StaffingDay = { status: StaffingStatus; windows: StaffingWindow[]; note: string }
 const minute = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? Number(value.slice(0, 2)) * 60 + Number(value.slice(3)) : NaN
@@ -17,6 +17,9 @@ export function staffingStatus(required: number | null, actual: number, uncertai
 // Read-only calculation. Quarter-hour grid, additionally split at exact changes; all ranges are [start, end).
 export function calculateStaffing(date: string, setup: KitaSetup | null, shifts: Shift[], absences: Absence[], employees: Employee[], dataUnavailable = false): StaffingDay {
   const unknown = (note: string): StaffingDay => ({ status: 'unconfigured', windows: [], note })
+  const dayOfWeek = new Date(`${date}T00:00:00Z`).getUTCDay()
+  // The existing model has no date-specific weekend demand. Never reuse weekday opening hours/minima.
+  if (dayOfWeek === 0 || dayOfWeek === 6) return { status: 'unspecified', windows: [], note: 'Für diesen Wochenend-Sonderdienst ist kein konkreter Soll-Personalbedarf hinterlegt. Schichten und Arbeitszeiten bleiben sichtbar; reguläre Öffnungszeiten und Mindestbesetzungen werden nicht übertragen.' }
   if (!setup?.completed) return unknown('Kita-Einstellungen und Sollvorgaben sind nicht vollständig eingerichtet.')
   const weekday = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date(`${date}T00:00:00Z`).getUTCDay()]
   // Same backwards-compatible weekday interpretation as KitaPage; no staffing minimum is defaulted.

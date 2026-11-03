@@ -4,7 +4,7 @@ import { build } from 'esbuild'
 import { newEmployee, saveEmployee, EMPLOYEES_KEY } from '../src/modules/mitarbeiter/employees.ts'
 import { newSetup, saveSetup, STORAGE_KEY } from '../src/modules/kita/setup.ts'
 const result = await build({ entryPoints: ['src/modules/dienstplan/schedule.ts'], bundle: true, write: false, platform: 'node', format: 'esm' })
-const { calendarWeek, addDays, localDate, loadShifts, SHIFTS_KEY, dayEntries, schedulePeople, validateShift, workTime, formatMinutes, saveShift, deleteShift, overlappingShifts, shiftWarnings } = await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`)
+const { calendarWeek, addDays, localDate, loadShifts, SHIFTS_KEY, dayEntries, schedulePeople, validateShift, workTime, formatMinutes, saveShift, deleteShift, overlappingShifts, shiftWarnings, visibleScheduleDays } = await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`)
 
 const shift = { id: 's-1', employeeId: 'e-1', groupId: 'g-1', date: '2027-01-04', start: '08:00', end: '16:00', breakMinutes: 30 }
 test('ISO-Wochen am Jahreswechsel und Kalenderarithmetik über Sommerzeit/Schaltjahr', () => {
@@ -117,4 +117,21 @@ test('Abwesenheiten und wiederkehrende Termine warnen ohne Speicherung zu verbie
   saveShift(storage, shift, 'create')
   assert.equal(loadShifts(storage).length, 1)
   assert.equal(JSON.parse(storage.getItem('kitaplanio-lite:events:v1')).events[0].date, event.date)
+})
+
+test('Wochenenddienste: Sichtbarkeit durch Schicht, Termin oder Auswahl; Zeiten zählen für Samstag und Sonntag', () => {
+  const dates = calendarWeek('2027-01-04').days
+  assert.deepEqual(visibleScheduleDays(dates, dates[0], [], [], []), dates.slice(0, 5))
+  const saturday = { ...shift, id: 'sat', date: dates[5], start: '09:00', end: '12:00', breakMinutes: 15 }
+  const sunday = { ...shift, id: 'sun', date: dates[6], start: '10:00', end: '12:00', breakMinutes: 0 }
+  for (const index of [5, 6]) {
+    assert.deepEqual(visibleScheduleDays(dates, dates[index], [], [], []), dates)
+    assert.deepEqual(visibleScheduleDays(dates, dates[0], [], [], [dates[index]]), dates)
+    assert.deepEqual(visibleScheduleDays(dates, dates[0], [{ ...shift, date: dates[index] }], [], []), dates)
+  }
+  assert.equal(dayEntries('e-1', dates[5], [saturday, sunday], []).shifts[0].id, 'sat')
+  assert.equal(dayEntries('e-1', dates[6], [saturday, sunday], []).shifts[0].id, 'sun')
+  assert.equal(formatMinutes(workTime([saturday, sunday]).net), '04:45')
+  assert.equal(formatMinutes(workTime([shift, saturday, sunday]).net), '12:15')
+  assert.deepEqual(visibleScheduleDays(dates, dates[0], [{ ...shift, date: '2027-01-16' }], [], ['2027-01-17']), dates.slice(0, 5))
 })

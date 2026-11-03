@@ -75,11 +75,25 @@ test('Fehlende Sollwerte sind nicht konfiguriert; geschlossene Tage und Detailve
   missing.groups[0].periods = [{ start: '08:00', end: '09:00', minimum: 0 }]
   assert.equal(at(run(baseline, [], missing), 480, 'group:g1').required, null)
   assert.equal(calculateStaffing('2027-01-05', setup, baseline, [], employees).status, 'closed')
-  assert.equal(calculateStaffing('2027-01-09', { ...setup, careDays: undefined }, [], [], employees).status, 'closed')
+  assert.equal(calculateStaffing('2027-01-09', { ...setup, careDays: undefined }, [], [], employees).status, 'unspecified')
   const windows = run([]).windows
   const condensed = criticalWindows(windows)
   assert.equal(condensed.length, 4) // early, 2 core groups, late
   assert.equal(condensed[0].start, 420); assert.equal(condensed[0].end, 480)
   assert.equal(windows[0].end, 435)
   assert.equal(JSON.stringify({ setup, baseline, employees }), before)
+})
+
+test('Samstag und Sonntag ohne konkreten Sonderdienstbedarf erhalten keine Ampel aus Werktagsvorgaben', () => {
+  for (const weekend of ['2027-01-09', '2027-01-10']) {
+    const shifts = baseline.map(shift => ({ ...shift, date: weekend }))
+    const before = JSON.stringify(shifts)
+    for (const config of [setup, null, { ...setup, completed: false }]) {
+      const day = calculateStaffing(weekend, config, shifts, [], employees)
+      assert.equal(day.status, 'unspecified')
+      assert.equal(day.windows.length, 0)
+      assert.match(day.note, /kein konkreter Soll-Personalbedarf/)
+    }
+    assert.equal(JSON.stringify(shifts), before)
+  }
 })

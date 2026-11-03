@@ -2,3 +2,10 @@ node_modules/
 dist/
 .DS_Store
 *.local
+
+# Local environment and Supabase CLI state (never commit credentials).
+.env
+.env.*
+!.env.example
+/supabase/.temp/
+/supabase/.branches/

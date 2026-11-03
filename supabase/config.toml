@@ -1,0 +1,3 @@
+# Local CLI identifier, not the hosted Supabase project reference.
+# Preparation only; no remote connection or app integration is enabled here.
+project_id = "kitaplanio-mini"

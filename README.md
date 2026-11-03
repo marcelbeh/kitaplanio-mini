@@ -72,3 +72,19 @@ node --experimental-strip-types --test tests/employees.test.mjs
 ```
 
 Geprüft werden CRUD, Validierung, Gruppenreferenzen, versionierte Speicherung, Speicherfehler, unveränderte P2-Daten und serverseitig gerenderte Karten/Formularfelder. Interaktive Bestätigungen, Abbrechen und die iPhone-Darstellung bleiben manuell im Browser zu prüfen; Renderprüfungen ersetzen dies nicht.
+
+## Premium-Oberfläche (P3.5)
+
+Branding nach dem „KitaPlanio Lite Branding- und Designkonzept“, Version 1.0: Aubergine, Creme, Flieder, Apricot und Mint; eigenständige SVG-Giraffe, helle/dunkle Wortmarke und abgeleitete PWA-Icons. Zentrale Designvariablen liegen in `src/app/styles.css`. Desktop nutzt eine feste Seitenleiste, Smartphone eine untere Navigation mit Start, Plan, Team und Mehr.
+
+Auf ausdrücklichen Wunsch werden ausschließlich vorhandene Systemschriften genutzt: `Avenir Next`/`Trebuchet MS` bzw. System-Sans für Daten und Formulare, `Bradley Hand`/`Segoe Print` bzw. eine lokale Schreibschrift für „Lite“. Die Darstellung kann je nach Gerät abweichen. Keine Schrift-Downloads, externen Bilddienste, KI-Bilder oder neuen Abhängigkeiten.
+
+Das Dashboard liest vorhandene Kita-/Mitarbeiterdaten ohne Schreibzugriff und zeigt den Einrichtungsstatus. Begrüßung und Datum richten sich nach der lokalen Gerätezeit. Gruppen werden erst nach abgeschlossener Einrichtung gezählt. Nicht verfügbare Daten werden als solche gekennzeichnet; Wochenplanung, Besetzung und Konflikte bleiben ausdrücklich Vorschau. Es gibt keine erfundenen Besetzungsquoten. Speicherformate und P2/P3-Geschäftslogik bleiben unverändert.
+
+Zusätzlicher gezielter Rendercheck:
+
+```sh
+node --experimental-strip-types --test tests/premium-ui.test.mjs
+```
+
+Der Check prüft Dashboard-Daten, Speicherfehler, ausbleibende Schreibzugriffe, Vorschaukennzeichnung und vorhandene Navigationsziele. Der Browserlauf wurde durch `listen EPERM 127.0.0.1:4173` vor dem Browserstart blockiert. Deshalb keine echten Desktop-/Smartphone-Screenshots; mobile Mehr-Navigation, Umbruch, Fokus und visuelle Darstellung sind manuell nachzuprüfen. Keine wiederholten Browser- oder Installationsversuche.

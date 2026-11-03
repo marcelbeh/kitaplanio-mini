@@ -1,51 +1,60 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { modules } from '../modules'
 import { KitaPage } from '../modules/kita/KitaPage'
 import { EmployeesPage } from '../modules/mitarbeiter/EmployeesPage'
+import { DashboardPage } from '../modules/dashboard/DashboardPage'
 import { PlaceholderPage } from '../shared/components/PlaceholderPage'
+import { Icon } from '../shared/components/Icon'
 
 function currentModule() {
-  return modules.find((module) => module.id === window.location.hash.slice(1)) ?? modules[0]
+  return modules.find(module => module.id === window.location.hash.slice(1)) ?? modules[0]
 }
+const mobileItems = [
+  { id: 'dashboard', label: 'Start' },
+  { id: 'dienstplan', label: 'Plan' },
+  { id: 'mitarbeiter', label: 'Team' },
+] as const
 
 export function App() {
   const [active, setActive] = useState(currentModule)
-
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreButton = useRef<HTMLButtonElement>(null)
+  const morePanel = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const onHashChange = () => setActive(currentModule())
+    const onHashChange = () => { setActive(currentModule()); setMoreOpen(false) }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
-
   useEffect(() => {
     document.title = `${active.title} · KitaPlanio Lite`
     document.getElementById('page-title')?.focus()
   }, [active])
-
-  return (
-    <div className="app-shell">
-      <a className="skip-link" href="#main-content">Zum Inhalt</a>
-      <aside className="sidebar">
-        <a className="brand" href="#dashboard" aria-label="KitaPlanio Lite – Dashboard">
-          <img src="/favicon.svg" width="40" height="40" alt="" />
-          <span>KitaPlanio <small>Lite</small></span>
-        </a>
-        <nav aria-label="Hauptnavigation">
-          {modules.map((module) => (
-            <a key={module.id} href={`#${module.id}`} aria-current={active.id === module.id ? 'page' : undefined}>
-              <span className="nav-marker" aria-hidden="true" />{module.title}
-            </a>
-          ))}
-        </nav>
-        <p className="sidebar-note">Raum für einen klaren Kita-Alltag.</p>
-      </aside>
-      <div className="workspace">
-        <header className="topbar"><span>Dein Kita-Alltag</span><span className="edition">KitaPlanio Lite</span></header>
-        <main id="main-content">
-          {active.id === 'kita' ? <KitaPage /> : active.id === 'mitarbeiter' ? <EmployeesPage /> : <PlaceholderPage title={active.title} description={active.description} />}
-        </main>
-        <footer>Einfach organisiert. Gemeinsam geplant.</footer>
-      </div>
+  useEffect(() => {
+    if (!moreOpen) return
+    morePanel.current?.querySelector('a')?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setMoreOpen(false); moreButton.current?.focus() }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [moreOpen])
+  const moreActive = !mobileItems.some(item => item.id === active.id)
+  return <div className="app-shell">
+    <a className="skip-link" href="#main-content">Zum Inhalt</a>
+    <aside className="sidebar">
+      <a className="brand" href="#dashboard" aria-label="KitaPlanio Lite – Start"><img src="/brand/logo-dark.svg" width="205" height="65" alt="KitaPlanio Lite" /></a>
+      <p className="sidebar-kicker">Dein Kita-Alltag</p>
+      <nav className="desktop-nav" aria-label="Hauptnavigation">{modules.map(module => <a key={module.id} href={`#${module.id}`} aria-current={active.id === module.id ? 'page' : undefined}><Icon name={module.id} /><span>{module.title}</span>{['dienstplan', 'abwesenheiten', 'einstellungen'].includes(module.id) && <span className="nav-preview" title="Vorschau" aria-label="Vorschau" />}</a>)}</nav>
+      <div className="sidebar-bottom"><span className="sidebar-flourish" aria-hidden="true">Lite</span><p>Dienstplanung.<br />Einfach. Kita.</p><small>Mit Liebe geplant.</small></div>
+    </aside>
+    <div className="workspace">
+      <header className="topbar"><a className="mobile-brand" href="#dashboard" aria-label="KitaPlanio Lite – Start"><img src="/brand/logo-light.svg" width="165" height="53" alt="KitaPlanio Lite" /></a><div className="breadcrumb"><span>KitaPlanio Lite</span><span aria-hidden="true">/</span><strong>{active.title}</strong></div><span className="profile-chip"><span className="profile-avatar" aria-hidden="true">C</span><span>Caro<small>Dein persönlicher Planungsraum</small></span></span></header>
+      <main id="main-content" tabIndex={-1}>
+        {active.id === 'dashboard' ? <DashboardPage /> : active.id === 'kita' ? <KitaPage /> : active.id === 'mitarbeiter' ? <EmployeesPage /> : <PlaceholderPage title={active.title} description={active.description} />}
+      </main>
+      <footer><span>KitaPlanio Lite</span><span>Mit Liebe geplant. Mit Köpfchen gemacht.</span></footer>
     </div>
-  )
+    {moreOpen && <div className="mobile-more" id="mobile-more" ref={morePanel}><div className="more-heading"><strong>Mehr für deinen Kita-Alltag</strong><button type="button" onClick={() => { setMoreOpen(false); moreButton.current?.focus() }}>Schließen</button></div>{modules.filter(module => !mobileItems.some(item => item.id === module.id)).map(module => <a key={module.id} href={`#${module.id}`} aria-current={active.id === module.id ? 'page' : undefined} onClick={() => setMoreOpen(false)}><Icon name={module.id} />{module.title}</a>)}</div>}
+    <nav className="bottom-nav" aria-label="Mobile Hauptnavigation">{mobileItems.map(item => <a key={item.id} href={`#${item.id}`} aria-current={active.id === item.id ? 'page' : undefined}><Icon name={item.id} /><span>{item.label}</span></a>)}<button ref={moreButton} type="button" aria-expanded={moreOpen} aria-controls={moreOpen ? 'mobile-more' : undefined} className={moreActive || moreOpen ? 'is-active' : ''} onClick={() => setMoreOpen(!moreOpen)}><Icon name="menu" /><span>Mehr</span></button></nav>
+  </div>
 }

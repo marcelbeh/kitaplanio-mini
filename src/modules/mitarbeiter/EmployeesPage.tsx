@@ -69,7 +69,7 @@ export function EmployeesPage() {
       <EmployeeForm key={editor.employee.id} initial={editor.employee} groups={groups} onSave={save} onCancel={() => { setEditor(null); setErrors([]) }} />
     </> : <>
       {canEdit && <button className="kita-button" onClick={() => openEditor(newEmployee(crypto.randomUUID()), 'create')}>Mitarbeiter anlegen</button>}
-      {!initial.employeeError && !store.employees.length && <section className="kita-card"><h2>Noch keine Mitarbeiter</h2><p>Lege dein Team an, sobald die Kita-Einrichtung abgeschlossen ist.</p></section>}
+      {!initial.employeeError && !store.employees.length && <section className="kita-card"><h2>Noch keine Mitarbeiter</h2><p>Noch niemand an Bord? Dann holen wir dein Team dazu. Die Kita-Einrichtung bildet dafür die Grundlage.</p></section>}
       <div className="employee-list">{store.employees.map(employee => <article className="kita-card" key={employee.id}>
         <h2>{employee.name}</h2>
         <p><strong>{groups.find(group => group.id === employee.groupId)?.name ?? 'Stammgruppe nicht verfügbar'}</strong> · {formatHours(employee.weeklyMinutes)} Wochenstunden</p>

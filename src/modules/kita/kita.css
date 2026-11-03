@@ -1,37 +1,54 @@
-.kita-setup { max-width: 840px; }
-.kita-local-note, .kita-help, .kita-lock-note { color: #607168; font-size: 13px; }
-.kita-progress { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0; margin: 28px 0; list-style: none; }
-.kita-progress li { border-top: 3px solid #dfe7e1; padding-top: 10px; color: #607168; font-size: 12px; }
-.kita-progress li[aria-current="step"] { border-color: #245d50; color: #245d50; font-weight: 700; }
-.kita-progress span { display: block; font-size: 15px; }
-.kita-card { min-width: 0; margin: 20px 0; padding: 24px; border: 1px solid #dfe7e1; border-radius: 12px; background: #fff; overflow-wrap: anywhere; }
+.kita-setup { max-width: 1024px; }
+.kita-local-note, .kita-help, .kita-lock-note { color: var(--muted); font-size: 12px; }
+.kita-local-note { margin-bottom: var(--space-3); }
+.kita-lock-note { padding: 12px 16px; border: 1px solid #C8E6D6; border-radius: var(--radius-sm); background: var(--mint-soft); color: var(--success); }
+.kita-progress { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); padding: 0; margin: var(--space-4) 0; list-style: none; }
+.kita-progress li { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: var(--radius-sm); color: var(--muted); background: #FFFFFF80; border: 1px solid var(--border); font-size: 11px; }
+.kita-progress li[aria-current="step"] { color: var(--aubergine); background: var(--lilac-soft); border-color: var(--lilac); font-weight: 650; }
+.kita-progress span { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; border: 1px solid var(--border); border-radius: 50%; font-size: 12px; background: var(--white); }
+.kita-progress [aria-current] span { background: var(--aubergine); border-color: var(--aubergine); color: var(--white); }
+.kita-card { min-width: 0; margin: var(--space-3) 0; padding: var(--space-4); overflow-wrap: anywhere; }
 .kita-card h2, .kita-card h3 { margin-top: 0; }
-.kita-card p { font-size: 14px; }
-.kita-shared { border-left: 4px solid #60856a; background: #f0f5ef; }
-.kita-setup legend { padding: 0 6px; font-weight: 650; }
-.kita-setup h3 { font-size: 16px; }
-.kita-setup label { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 13px; font-weight: 600; }
-.kita-setup input { width: 100%; min-width: 0; min-height: 44px; padding: 10px; border: 1px solid #a6b8ac; border-radius: 6px; background: white; color: #233b34; font: inherit; font-size: 16px; }
-.kita-setup input:focus-visible, .kita-button:focus-visible { outline: 3px solid #9c6525; outline-offset: 3px; }
-.kita-count { max-width: 220px; margin-bottom: 12px; }
-.kita-names { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
-.kita-time-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.kita-period-fields { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; align-items: end; }
-.kita-period { min-width: 0; padding: 16px; margin: 12px 0 16px; border: 1px solid #dfe7e1; border-radius: 8px; }
-.kita-period > button { margin-top: 12px; }
-.kita-button { min-height: 44px; padding: 10px 18px; border: 1px solid #245d50; border-radius: 7px; background: #245d50; color: white; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-.kita-button.secondary { background: white; color: #245d50; }
-.kita-button:hover { filter: brightness(.95); }
-.kita-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0; }
-.kita-errors { margin: 20px 0; padding: 16px; border: 1px solid #b96c57; border-radius: 8px; background: #fff3ed; color: #7c3226; font-size: 14px; }
+.kita-card p { font-size: 13px; }
+.kita-card p:last-child { margin-bottom: 0; }
+.kita-shared { border-left: 4px solid var(--lilac); background: #FCFAFE; }
+.kita-setup legend { max-width: 100%; padding: 0 var(--space-1); color: var(--aubergine); font-size: 14px; font-weight: 650; }
+.kita-setup h3 { font-size: 15px; }
+.kita-setup label { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; color: var(--text); font-size: 12px; font-weight: 600; }
+.kita-setup input, .employee-page select, .employee-page textarea { width: 100%; min-width: 0; min-height: 48px; padding: 12px 14px; border: 1px solid #D9CBDB; border-radius: var(--radius-sm); background: #FFFEFD; color: var(--text); font: inherit; font-size: 16px; transition: border-color .15s ease, box-shadow .15s ease; }
+.kita-setup input:hover, .employee-page select:hover, .employee-page textarea:hover { border-color: var(--lilac); }
+.kita-setup input:focus-visible, .employee-page select:focus-visible, .employee-page textarea:focus-visible { outline: 2px solid #8960AC; outline-offset: 2px; border-color: #8960AC; box-shadow: 0 0 0 4px #BDA3E622; }
+.kita-setup input::placeholder { color: var(--muted); font-size: 13px; font-weight: 400; }
+.kita-count { max-width: 220px; margin-bottom: var(--space-2); }
+.kita-names { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin-top: var(--space-3); }
+.kita-time-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.kita-period-fields { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-2); align-items: end; }
+.kita-period { min-width: 0; padding: var(--space-3); margin: var(--space-2) 0 var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: #FFFFFFB0; }
+.kita-period > button { margin-top: var(--space-2); }
+.kita-button { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 46px; padding: 12px 20px; border: 1px solid var(--aubergine); border-radius: var(--radius-sm); background: var(--aubergine); color: var(--white); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; line-height: 1.5; text-align: center; transition: background .18s ease, box-shadow .18s ease; }
+.kita-button.secondary { background: var(--white); border-color: #D9CBDB; color: var(--aubergine); }
+.kita-button:hover { background: #5D2E6A; box-shadow: 0 3px 10px #4A1F5514; }
+.kita-button.secondary:hover { background: var(--lilac-soft); border-color: var(--lilac); }
+.kita-button .icon { width: 17px; height: 17px; }
+.kita-button:disabled { color: var(--muted); background: #F2ECF0; border-color: var(--border); cursor: not-allowed; box-shadow: none; }
+.kita-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0; }
+.kita-errors { margin: var(--space-3) 0; padding: var(--space-3); border: 1px solid #E9AFB9; border-left: 4px solid var(--danger); border-radius: var(--radius-sm); background: var(--danger-soft); color: #8F2941; font-size: 13px; }
 .kita-errors ul { margin-bottom: 0; padding-left: 20px; }
-.kita-success { padding: 12px 16px; background: #eaf2ed; color: #245d50; border-radius: 8px; }
-.kita-summary-group + .kita-summary-group { padding-top: 16px; border-top: 1px solid #dfe7e1; }
-.kita-summary ul { padding-left: 20px; font-size: 14px; }
+.kita-success { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-2) var(--space-3); background: var(--mint); color: var(--success); border-radius: var(--radius-sm); font-size: 13px; }
+.kita-success::before { content: '✓'; font-weight: 700; }
+.kita-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin: var(--space-3) 0; align-items: start; }
+.kita-summary .kita-card { margin: 0; }
+.kita-summary .kita-card:has(.kita-summary-group) { grid-column: 1 / -1; }
+.kita-summary .status { margin-bottom: 12px; }
+.kita-summary-group + .kita-summary-group { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.kita-summary ul { padding-left: 20px; font-size: 13px; }
 @media (max-width: 760px) {
-  .kita-progress { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .kita-card { padding: 16px; }
-  .kita-names, .kita-period-fields { grid-template-columns: minmax(0, 1fr); }
-  .kita-period { padding: 10px; }
+  .kita-progress { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); }
+  .kita-progress li { padding: 10px; font-size: 10px; gap: var(--space-1); }
+  .kita-progress span { width: 24px; height: 24px; }
+  .kita-card { padding: var(--space-3); }
+  .kita-names, .kita-period-fields, .kita-time-fields, .kita-summary { grid-template-columns: minmax(0, 1fr); }
+  .kita-period { padding: var(--space-2); }
+  .kita-actions { gap: 12px; }
   .kita-actions > button { flex: 1 1 auto; }
 }

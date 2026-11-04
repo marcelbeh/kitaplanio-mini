@@ -8,5 +8,6 @@ export const modules = [
   { id: 'dienstplan', title: 'Dienstplan', description: 'Schichten, Abwesenheiten und Sondertermine im Wochenüberblick.' },
   { id: 'vorlagen', title: 'Vorlagen', description: 'Gerätelokale Wochenmuster speichern und sicher anwenden.' },
   { id: 'monatsplan', title: 'Monatsübersicht', description: 'Monatliche Besetzung und geplante Netto-Arbeitszeiten.' },
+  { id: 'auswertungen', title: 'Auswertungen', description: 'Geplante Stunden und Dienstverteilung im Überblick.' },
   { id: 'einstellungen', title: 'Einstellungen', description: 'Deine lokalen App-Daten verwalten.' },
 ] as const

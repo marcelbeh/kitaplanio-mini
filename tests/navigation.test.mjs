@@ -106,3 +106,17 @@ test('Vorlagen sind direkt in der Navigation und mobil unter Mehr mit dem richti
     assert.ok(elements(more).some(node => node.type === 'a' && node.props.href === '#vorlagen'))
   } finally { app.restore() }
 })
+
+test('Auswertungen sind als eigener lesender Bereich in Navigation und mobil unter Mehr erreichbar', () => {
+  const app = mount('#auswertungen')
+  try {
+    let tree = app.render()
+    assert.equal(app.state[0].id, 'auswertungen')
+    assert.ok(tree.some(node => node.type === 'a' && node.props.href === '#auswertungen'))
+    assert.ok(tree.some(node => typeof node.type === 'function' && node.type.name === 'AnalyticsPage'))
+    tree.find(node => node.type === 'button' && 'aria-expanded' in node.props).props.onClick()
+    tree = app.render()
+    const more = tree.find(node => node.props?.id === 'mobile-more')
+    assert.ok(elements(more).some(node => node.type === 'a' && node.props.href === '#auswertungen'))
+  } finally { app.restore() }
+})

@@ -1,3 +1,4 @@
+import { appStorage } from '../../cloud/workspace'
 import { useEffect, useState } from 'react'
 import { loadSetup, savePlanningLimits } from '../kita/setup'
 import { loadEmployees } from '../mitarbeiter/employees'
@@ -27,14 +28,14 @@ function readSchedule() {
   function read<T,>(label: string, load: () => T, fallback: T): T {
     try { return load() } catch { errors.push(`${label} konnten nicht geladen werden. Die Anzeige ist unvollständig. Vorhandene Daten bleiben erhalten; bitte Speicher prüfen und neu laden.`); return fallback }
   }
-  const setup = read('Kita-Einstellungen', () => loadSetup(window.localStorage), null)
+  const setup = read('Kita-Einstellungen', () => loadSetup(appStorage), null)
   return {
-    setup, inspection: inspectStoredShifts({ getItem: key => window.localStorage.getItem(key) }),
-    employees: read('Mitarbeiterdaten', () => loadEmployees(window.localStorage).employees, []),
+    setup, inspection: inspectStoredShifts({ getItem: key => appStorage.getItem(key) }),
+    employees: read('Mitarbeiterdaten', () => loadEmployees(appStorage).employees, []),
     groups: setup?.groups ?? [],
-    absences: read('Abwesenheiten', () => loadAbsences(window.localStorage).absences, []),
-    events: read('Sondertermine', () => loadEvents(window.localStorage), []),
-    shifts: read('Schichten', () => loadShifts(window.localStorage), []), errors,
+    absences: read('Abwesenheiten', () => loadAbsences(appStorage).absences, []),
+    events: read('Sondertermine', () => loadEvents(appStorage), []),
+    shifts: read('Schichten', () => loadShifts(appStorage), []), errors,
   }
 }
 export function SchedulePage() {
@@ -128,15 +129,15 @@ export function SchedulePage() {
     <PublicationPanel plan={printable} selected={selectedPublication} onSelect={setSelectedPublication} issues={issues} locked={!!draft} unavailable={data.errors.length > 0} />
     {!selectedPublication && <>
     <GeneratorPanel draft={draft} setup={data.setup} dates={week.days} issues={issues} error={generatorError} onGenerate={demands => {
-      try { const context = readGeneratorContext(window.localStorage); setCheckOptions(context.setup?.planningRules ?? {}); setDraft({ context, proposal: generateProposal(context, selected, demands) }); setGeneratorError(''); setNotice('') }
+      try { const context = readGeneratorContext(appStorage); setCheckOptions(context.setup?.planningRules ?? {}); setDraft({ context, proposal: generateProposal(context, selected, demands) }); setGeneratorError(''); setNotice('') }
       catch (error) { setGeneratorError((error as Error).message) }
     }} onDiscard={() => { setDraft(null); setData(readSchedule()); setGeneratorError(''); setNotice('Vorschau verworfen. Es wurden keine Schichten gespeichert.') }} onAdopt={() => {
       if (!draft) return
-      try { const count = adoptProposal(window.localStorage, draft, checkOptions, true); setDraft(null); setData(readSchedule()); setGeneratorError(''); setNotice(`${count} neue Schichten übernommen.`) }
+      try { const count = adoptProposal(appStorage, draft, checkOptions, true); setDraft(null); setData(readSchedule()); setGeneratorError(''); setNotice(`${count} neue Schichten übernommen.`) }
       catch (error) { setGeneratorError((error as Error).message) }
     }} />
     <PlanChecks issues={issues} options={checkOptions} onOptions={value => { setCheckOptions(value); setRulesMessage('Noch nicht gespeichert.') }} limitsLocked={!!draft} rulesMessage={rulesMessage} onSaveOptions={() => {
-      try { savePlanningLimits(window.localStorage, checkOptions); setData(readSchedule()); setRulesMessage('Grenzen lokal gespeichert. Leere Grenzen bleiben deaktiviert.') }
+      try { savePlanningLimits(appStorage, checkOptions); setData(readSchedule()); setRulesMessage('Grenzen lokal gespeichert. Leere Grenzen bleiben deaktiviert.') }
       catch (error) { setRulesMessage((error as Error).message) }
     }} onSelect={date => {
       select(date)

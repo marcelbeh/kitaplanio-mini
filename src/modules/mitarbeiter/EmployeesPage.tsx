@@ -1,3 +1,4 @@
+import { appStorage } from '../../cloud/workspace'
 import { useEffect, useRef, useState } from 'react'
 import { loadSetup } from '../kita/setup'
 import { DAYS, deleteEmployee, formatHours, loadEmployees, newEmployee, saveEmployee, validateEmployee } from './employees'
@@ -16,9 +17,9 @@ function readData() {
   let kitaError = ''
   let employeeError = ''
   let absences: Absence[] = [], absenceError = ''
-  try { kita = loadSetup(window.localStorage) } catch { kitaError = 'Kita-Einstellungen konnten nicht geladen werden. Vorhandene Daten bleiben erhalten.' }
-  try { store = loadEmployees(window.localStorage) } catch { employeeError = 'Mitarbeiterdaten konnten nicht geladen werden (Speicherzugriff, beschädigte Daten oder unbekannte Version). Vorhandene Daten werden nicht überschrieben. Bitte prüfen und neu laden.' }
-  try { absences = sortAbsences(loadAbsences(window.localStorage).absences) } catch { absenceError = 'Abwesenheiten konnten nicht geladen werden. Vorhandene Daten bleiben erhalten.' }
+  try { kita = loadSetup(appStorage) } catch { kitaError = 'Kita-Einstellungen konnten nicht geladen werden. Vorhandene Daten bleiben erhalten.' }
+  try { store = loadEmployees(appStorage) } catch { employeeError = 'Mitarbeiterdaten konnten nicht geladen werden (Speicherzugriff, beschädigte Daten oder unbekannte Version). Vorhandene Daten werden nicht überschrieben. Bitte prüfen und neu laden.' }
+  try { absences = sortAbsences(loadAbsences(appStorage).absences) } catch { absenceError = 'Abwesenheiten konnten nicht geladen werden. Vorhandene Daten bleiben erhalten.' }
   return { kita, store, kitaError, employeeError, absences, absenceError }
 }
 
@@ -46,16 +47,16 @@ export function EmployeesPage() {
     if (issues.length) { setErrors(issues); return }
     try {
       // Re-read P2 for reference validation; never write to its storage key.
-      const kita = loadSetup(window.localStorage)
+      const kita = loadSetup(appStorage)
       if (!kita?.completed) throw new Error('Bitte zuerst die Kita-Einrichtung abschließen.')
-      setStore(saveEmployee(window.localStorage, employee, kita.groups, editor!.mode))
+      setStore(saveEmployee(appStorage, employee, kita.groups, editor!.mode))
       setEditor(null); setErrors([]); setNotice('Mitarbeiterdaten gespeichert.')
     } catch (error) { setErrors([`Speichern fehlgeschlagen: ${(error as Error).message}`]) }
   }
   function confirmDelete() {
     if (!deleting) return
     try {
-      setStore(deleteEmployee(window.localStorage, deleting.id))
+      setStore(deleteEmployee(appStorage, deleting.id))
       setDeleting(null); setErrors([]); setNotice('Mitarbeiter entfernt.')
     } catch (error) { setErrors([`Löschen fehlgeschlagen: ${(error as Error).message}`]) }
   }

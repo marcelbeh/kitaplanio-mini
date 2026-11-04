@@ -1,10 +1,11 @@
+import { appStorage } from '../../cloud/workspace'
 import { useEffect, useState } from 'react'
 import type { PlanIssue } from './checks'
 import { loadPublications, preparePublication, publicationStatus, publishWeek } from './publications'
 import type { PublishedPlan, PublicationToken, TeamPlan } from './publications'
 
 function readVersions() {
-  try { return { plans: loadPublications(window.localStorage).plans, error: '' } }
+  try { return { plans: loadPublications(appStorage).plans, error: '' } }
   catch (error) { return { plans: [] as PublishedPlan[], error: (error as Error).message } }
 }
 export function PublicationPanel({ plan, selected, onSelect, issues, locked, unavailable }: { plan: TeamPlan; selected: PublishedPlan | null; onSelect: (value: PublishedPlan | null) => void; issues: PlanIssue[]; locked: boolean; unavailable: boolean }) {
@@ -22,12 +23,12 @@ export function PublicationPanel({ plan, selected, onSelect, issues, locked, una
   const hard = issues.filter(issue => issue.kind === 'conflict').length
   const hints = issues.length - hard
   function prepare() {
-    try { setToken(preparePublication(window.localStorage, plan.from)); setError(''); setNotice('') }
+    try { setToken(preparePublication(appStorage, plan.from)); setError(''); setNotice('') }
     catch (error) { setError((error as Error).message) }
   }
   function confirm() {
     if (!token) return
-    try { const published = publishWeek(window.localStorage, token, true); setVersions(readVersions()); setToken(null); onSelect(published); setNotice(`Version ${published.version} lokal veröffentlicht.`); setError('') }
+    try { const published = publishWeek(appStorage, token, true); setVersions(readVersions()); setToken(null); onSelect(published); setNotice(`Version ${published.version} lokal veröffentlicht.`); setError('') }
     catch (error) { setError((error as Error).message); setToken(null) }
   }
   const printDisabled = locked || !selected && unavailable

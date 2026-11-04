@@ -1,3 +1,4 @@
+import { appStorage } from '../../cloud/workspace'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { loadEmployees } from '../mitarbeiter/employees'
@@ -11,8 +12,8 @@ import './absences.css'
 function readInitial() {
   let employees: Employee[] = [], store: AbsenceStore = { version: 1, absences: [] }
   let teamError = '', absenceError = ''
-  try { employees = loadEmployees(window.localStorage).employees } catch { teamError = 'Mitarbeiterdaten konnten nicht geladen werden. Neue Abwesenheiten können erst nach Beheben des Speicherproblems erfasst werden.' }
-  try { store = loadAbsences(window.localStorage) } catch { absenceError = 'Abwesenheiten konnten nicht geladen werden (Speicherzugriff, beschädigte Daten oder unbekannte Version). Vorhandene Daten bleiben erhalten. Bitte prüfen und neu laden.' }
+  try { employees = loadEmployees(appStorage).employees } catch { teamError = 'Mitarbeiterdaten konnten nicht geladen werden. Neue Abwesenheiten können erst nach Beheben des Speicherproblems erfasst werden.' }
+  try { store = loadAbsences(appStorage) } catch { absenceError = 'Abwesenheiten konnten nicht geladen werden (Speicherzugriff, beschädigte Daten oder unbekannte Version). Vorhandene Daten bleiben erhalten. Bitte prüfen und neu laden.' }
   return { employees, store, teamError, absenceError }
 }
 const emptyFilters = { employeeId: '', from: '', to: '' }
@@ -41,12 +42,12 @@ export function AbsencesPage() {
     if (!editor) return
     const issues = validateAbsence(editor.value)
     if (issues.length) { setErrors(issues); return }
-    try { setStore(saveAbsence(window.localStorage, editor.value, editor.mode)); setEditor(null); setErrors([]); setNotice('Abwesenheit gespeichert.'); setFilters(emptyFilters) }
+    try { setStore(saveAbsence(appStorage, editor.value, editor.mode)); setEditor(null); setErrors([]); setNotice('Abwesenheit gespeichert.'); setFilters(emptyFilters) }
     catch (error) { setErrors([(error as Error).message]) }
   }
   function confirmDelete() {
     if (!deleting) return
-    try { setStore(deleteAbsence(window.localStorage, deleting)); setDeleting(null); setErrors([]); setNotice('Abwesenheit gelöscht.') }
+    try { setStore(deleteAbsence(appStorage, deleting)); setDeleting(null); setErrors([]); setNotice('Abwesenheit gelöscht.') }
     catch (error) { setErrors([(error as Error).message]) }
   }
   return <div className="kita-setup employee-page absence-page">

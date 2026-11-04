@@ -1,3 +1,4 @@
+import { WORKSPACE_EVENT, appStorage } from '../cloud/workspace'
 import { CloudAccount } from '../cloud/CloudAccount'
 import { useEffect, useRef, useState } from 'react'
 import { modules } from '../modules'
@@ -13,7 +14,7 @@ import { shouldStartInterview } from '../modules/kita/interview'
 
 function currentModule() {
   if (!window.location.hash) {
-    try { if (shouldStartInterview(window.localStorage)) return modules.find(module => module.id === 'kita')! } catch { /* Keep the dashboard available when local data cannot be read. */ }
+    try { if (shouldStartInterview(appStorage)) return modules.find(module => module.id === 'kita')! } catch { /* Keep the dashboard available when local data cannot be read. */ }
   }
   return modules.find(module => module.id === window.location.hash.slice(1)) ?? modules[0]
 }
@@ -26,6 +27,12 @@ const mobileItems = [
 export function App() {
   const [active, setActive] = useState(currentModule)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [workspaceRevision, setWorkspaceRevision] = useState(0)
+  useEffect(() => {
+    const refresh = () => setWorkspaceRevision(value => value + 1)
+    window.addEventListener(WORKSPACE_EVENT, refresh)
+    return () => window.removeEventListener(WORKSPACE_EVENT, refresh)
+  }, [])
   const moreButton = useRef<HTMLButtonElement>(null)
   const morePanel = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -62,7 +69,7 @@ export function App() {
     </aside>
     <div className="workspace">
       <header className="topbar"><a className="mobile-brand" href="#dashboard" aria-label="caro. – Start"><img src="./brand/logo-light.svg" width="165" height="53" alt="caro." /></a><div className="breadcrumb"><span>caro.</span><span aria-hidden="true">/</span><strong>{active.title}</strong></div><CloudAccount /></header>
-      <main id="main-content" tabIndex={-1}>
+      <main key={workspaceRevision} id="main-content" tabIndex={-1}>
         {active.id === 'dashboard' ? <DashboardPage /> : active.id === 'kita' ? <KitaPage /> : active.id === 'mitarbeiter' ? <EmployeesPage /> : active.id === 'abwesenheiten' ? <AbsencesPage /> : active.id === 'termine' ? <EventsPage /> : active.id === 'dienstplan' ? <SchedulePage /> : <PlaceholderPage title={active.title} description={active.description} />}
       </main>
       <footer><span>caro.</span><span>Mit Herz geplant.</span></footer>

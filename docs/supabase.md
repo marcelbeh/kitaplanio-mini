@@ -61,3 +61,33 @@ Zum erneuten kontrollierten Ausführen als Projektadministrator: `psql -v ON_ERR
 - [Client initialisieren](https://supabase.com/docs/reference/javascript/initializing)
 - [RLS und Eigentümerprüfungen](https://supabase.com/docs/guides/database/postgres/row-level-security)
 - [API-/Publishable-Keys](https://supabase.com/docs/guides/api/api-keys)
+
+## P8b: manuelle Synchronisierung
+
+P8b ergänzt den ausdrücklich geöffneten **Cloud-Arbeitsbestand**. Anmeldung allein startet keine Übertragung. Bestehende lokale Keys/Daten bleiben unverändert und über „Zu bisherigen lokalen Daten“ erreichbar. Logout wechselt dorthin zurück, ohne den Cloud-Zwischenstand zu löschen. Wie bisher schützen Auth/RLS die Cloud, nicht den lokalen Browser eines gemeinsam genutzten Geräts.
+
+### Einrichtung nach Merge
+
+1. Die additive Migration `supabase/migrations/20261104084456_caro_sync_cas.sql` einmal im bestehenden Projekt anwenden (Supabase CLI `db push` mit geprüfter Migrationsliste, alternativ kontrolliert im SQL Editor). Sie wurde im Projekt gemeinsam mit den SQL-Tests **innerhalb einer vollständig zurückgerollten Transaktion** geprüft, aber noch nicht dauerhaft installiert. Sie ändert keine bestehenden Payloads und schaltet keinen Bestand automatisch frei. Keine P8a-Migration erneut ausführen.
+2. `caro_app_data` erhält `revision`, `sync_initialized` und `updated_at`. Direkte Browser-Schreibrechte entfallen; nur `caro_sync_cas(expected_revision,payload)` darf einen freigegebenen eigenen, ausdrücklich initialisierten Datensatz aktualisieren. Der private Worker prüft `auth.uid()`, aktive Mitgliedschaft und nicht-anonyme Anmeldung erneut. Prüfung, vollständiger Ersatz und Versionsinkrement laufen in derselben DB-Transaktion; veraltete Versionen erhalten kein Ergebnis. Keine Inserts/Upserts durch den Client.
+3. **Noch keine Erstmigration vornehmen.** P8c muss einen geprüften vollständigen Bestand nach ausdrücklicher Zustimmung einrichten und `sync_initialized` setzen. P8b kann deshalb bei bislang nur lokalen Daten noch nicht synchronisieren; es zeigt einen entsprechenden P8c-Hinweis. Niemals einen leeren Payload oder `sync_initialized=true` als Abkürzung eintragen. Existierende P8a-Container bleiben bis zur bewussten Einrichtung uninitialisiert.
+4. Nach dieser Einrichtung dasselbe freigeschaltete Konto auf Mac und iPhone verwenden und je Gerät „Cloud-Datenbestand öffnen“ bestätigen. Dies lädt einen vorhandenen Cloud-Bestand in einen getrennten Cache, ohne den alten lokalen Bestand zu importieren. Ein vorhandener Cache wird mitsamt Offline-Änderungen wieder geöffnet, nicht automatisch durch die Cloud ersetzt.
+
+### Datenvertrag und Konflikte
+
+`payload` enthält **vollständig** sieben bisherige Keys als JSON-Objekte oder `null`: Kita (einschließlich Gruppen/Planungsregeln), Interview-Zwischenstand, Mitarbeitende (einschließlich Wünsche/Sperrregeln), Schichten/Pausen, Abwesenheiten, Sondertermine und veröffentlichte Wochenversionen. Die bisherigen versionierten Objekte bleiben unverändert. Leere Arrays und `null` werden als vollständiger Zustand übertragen, nicht zusammengeführt. Unbekannte/unvollständige Formate werden abgelehnt. Vorhandene veröffentlichte `(from,version)`-Snapshots dürfen serverseitig weder entfernt noch verändert werden.
+
+Ein lokaler Cloud-Cache pro Benutzer (`caro:sync-workspace:v1:<UUID>`) enthält Basisversion, vollständigen Basis-/Arbeitsstand und letzten Synchronisierungszeitpunkt. Ein einzelnes `localStorage.setItem` schreibt zusammengehörige Daten atomar. `caro:sync-active:v1` wählt nur den ausdrücklich geöffneten Arbeitsbestand; Geschäftsmodelle und ihre alten Keys bleiben gleich. Speicherfehler werden nicht als Erfolg gemeldet.
+
+„Jetzt synchronisieren“ prüft Auth/Freigabe und Cloud-Stand. Bei unveränderter Cloud werden lokale Änderungen per CAS übertragen. Bei abweichenden Beständen ist eine explizite Entscheidung erforderlich, auch bei rein eingehenden Änderungen. „Lokal behalten“ verlangt eine zweite Bestätigung, erneutes Lesen und CAS. Ein inzwischen geänderter Stand verlangt eine neue Entscheidung. „Cloud übernehmen“ prüft erneut, übernimmt lokal den gesamten Bestand mit einem Schreibvorgang und behält den ersetzten Arbeitsstand als `backup` im selben lokalen Cache. Abbrechen schreibt nichts. Es gibt keine automatische Zusammenführung. Kollisionen unveränderlicher Wochenversionen müssen vor einer Übernahme manuell geklärt werden; P8b löst sie nicht durch Löschen. Die Sicherung ist kein dauerhaftes Versionsarchiv und wird bei einer späteren ausdrücklich bestätigten Übernahme ersetzt.
+
+Offline wird weiter lokal gespeichert; Wiederverbinden löst **keine** Synchronisierung aus. Änderungen während einer laufenden Übertragung bleiben lokal markiert. Bei verlorener Netzwerkantwort kann die Cloud bereits vollständig gespeichert haben; ein erneuter manueller Abgleich erkennt übereinstimmende Inhalte oder zeigt einen Konflikt, statt blind erneut zu schreiben. Offene ungespeicherte Formulare/Generatorvorschläge werden bei ausdrücklich bestätigtem Arbeitsbestandswechsel neu geladen.
+
+### Nachweise und offene manuelle Tests
+
+- `node tests/sync.test.mjs`: zwei Geräte, CAS-Rennen/erneute Bestätigung, leere Sammlungen/Löschungen, Offline/Quota, Logout, Änderungen während Upload, unveränderliche Freigaben, keine Erstinitialisierung.
+- `supabase/tests/rls.sql`: synthetische Identitäten, eigene/fremde SELECTs, CAS/stale revisions, fehlende Freigabe/anonymous, verbotene direkte Writes, unveränderliche Freigaben und fehlende Initialisierung. Alle Fixtures werden zurückgerollt. Die Datei setzt jetzt P8b voraus. Keine produktiven Payloads werden gelesen oder verändert.
+- TypeScript, Build und gezielte bestehende Auth-/Dienstplan-/Freigabetests. Browsercheck wegen bekannter Sandbox-Blockade nicht erneut gestartet. Nach Migration und P8c-Einrichtung: echter Zwei-Geräte-Abgleich, Offline/Reconnect, Konfliktwahl und iPhone-/Mac-Darstellung manuell prüfen.
+- Supabase Advisor meldet aktuell **„Leaked Password Protection Disabled“**. Im Dashboard bei verfügbarem Tarif aktivieren: [Passwortschutz](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). Keine Auth-Konfiguration wurde automatisch verändert.
+
+Aktuelle Referenzen: [DB-Funktionen, Transaktionen und Ausführungsrechte](https://supabase.com/docs/guides/database/functions), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Datenzugriff absichern](https://supabase.com/docs/guides/database/secure-data). Live erst nach Merge und erfolgreichem Deployment: https://marcelbeh.github.io/kitaplanio-mini/.

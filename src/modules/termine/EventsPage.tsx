@@ -1,3 +1,4 @@
+import { appStorage } from '../../cloud/workspace'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { loadSetup } from '../kita/setup'
@@ -10,7 +11,7 @@ import '../mitarbeiter/employees.css'
 import '../abwesenheiten/absences.css'
 
 function readInitial() {
-  const storage = { getItem: (key: string) => window.localStorage.getItem(key), setItem: (key: string, value: string) => window.localStorage.setItem(key, value) }
+  const storage = { getItem: (key: string) => appStorage.getItem(key), setItem: (key: string, value: string) => appStorage.setItem(key, value) }
   let events: Event[] = [], eventError = '', contextError = ''
   let employees: ReturnType<typeof loadEmployees>['employees'] = [], groups: NonNullable<ReturnType<typeof loadSetup>>['groups'] = [], absences: ReturnType<typeof loadAbsences>['absences'] = []
   try { events = loadEvents(storage) } catch { eventError = 'Termine konnten nicht geladen werden. Vorhandene Daten bleiben erhalten. Bitte Speicher prüfen und neu laden.' }
@@ -35,7 +36,7 @@ export function EventsPage() {
   function submit(event: FormEvent) {
     event.preventDefault()
     if (!editor) return
-    try { setEvents(saveEvent(window.localStorage, editor.value, editor.mode)); setEditor(null); setError(''); setNotice('Termin gespeichert.'); setFilters({ from: '', to: '' }) }
+    try { setEvents(saveEvent(appStorage, editor.value, editor.mode)); setEditor(null); setError(''); setNotice('Termin gespeichert.'); setFilters({ from: '', to: '' }) }
     catch (error) { setError((error as Error).message) }
   }
   const invalidFilter = filters.from && filters.to && filters.from > filters.to
@@ -86,7 +87,7 @@ export function EventsPage() {
         return <article className="kita-card" key={`${event.id}:${item.date}`}><span className="status preview-status">{EVENT_TYPES[event.type]}</span><h2>{event.title}</h2><p>{dateLabel(item.date)} · {item.start}–{item.end}</p><p>{affected}</p>{event.recurrence !== 'once' && <p>{event.recurrence === 'weekly' ? 'Wöchentlich' : 'Monatlich'} bis {dateLabel(event.until)} · Änderungen gelten für die gesamte Serie</p>}{event.note && <p style={{ whiteSpace: 'pre-wrap' }}>{event.note}</p>}
           {hints({ ...event, date: item.date, recurrence: 'once', until: '' }).map((hint, i) => <p className="absence-warning" key={i}>{hint}</p>)}
           <div className="kita-actions"><button className="kita-button secondary" onClick={() => open(event, 'update')}>Bearbeiten<span className="employee-sr-only">: {event.title}, {dateLabel(item.date)}</span></button><button className="kita-button secondary" onClick={() => { setDeleting(`${event.id}:${item.date}`); setError(''); setNotice('') }}>Löschen<span className="employee-sr-only">: {event.title}, {dateLabel(item.date)}</span></button></div>
-          {deleting === `${event.id}:${item.date}` && <div className="employee-delete" role="group" aria-label="Termin löschen bestätigen" tabIndex={-1} ref={deleteBox}><p>„{event.title}“{event.recurrence !== 'once' ? ' mit allen Wiederholungen' : ''} wirklich löschen?</p><div className="kita-actions"><button className="kita-button" onClick={() => { try { setEvents(deleteEvent(window.localStorage, event.id)); setDeleting(null); setError(''); setNotice('Termin gelöscht.') } catch (error) { setError((error as Error).message) } }}>Endgültig löschen</button><button className="kita-button secondary" onClick={() => setDeleting(null)}>Abbrechen</button></div></div>}
+          {deleting === `${event.id}:${item.date}` && <div className="employee-delete" role="group" aria-label="Termin löschen bestätigen" tabIndex={-1} ref={deleteBox}><p>„{event.title}“{event.recurrence !== 'once' ? ' mit allen Wiederholungen' : ''} wirklich löschen?</p><div className="kita-actions"><button className="kita-button" onClick={() => { try { setEvents(deleteEvent(appStorage, event.id)); setDeleting(null); setError(''); setNotice('Termin gelöscht.') } catch (error) { setError((error as Error).message) } }}>Endgültig löschen</button><button className="kita-button secondary" onClick={() => setDeleting(null)}>Abbrechen</button></div></div>}
         </article>
       })}</div>
     </>)}

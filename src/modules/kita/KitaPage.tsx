@@ -1,3 +1,4 @@
+import { appStorage } from '../../cloud/workspace'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { loadSetup, MAX_GROUPS, newSetup, resizeGroups } from './setup'
@@ -11,9 +12,9 @@ import './kita.css'
 
 function readInitial() {
   try {
-    const setup = loadSetup(window.localStorage)
-    const state = loadInterview(window.localStorage)
-    return { setup, flow: state?.status === 'draft' ? state : !setup?.completed ? startInterview(window.localStorage) : null, error: '' }
+    const setup = loadSetup(appStorage)
+    const state = loadInterview(appStorage)
+    return { setup, flow: state?.status === 'draft' ? state : !setup?.completed ? startInterview(appStorage) : null, error: '' }
   } catch { return { setup: null, flow: null, error: 'Die lokalen Einstellungen oder der Interview-Zwischenstand konnten nicht geladen werden. Vorhandene Daten wurden nicht überschrieben. Bitte gespeicherte Daten und Speicherzugriff prüfen.' } }
 }
 
@@ -90,7 +91,7 @@ export function KitaPage() {
   useEffect(() => { if (errors.length) errorBox.current?.focus() }, [errors])
   useEffect(() => {
     if (!flow) return
-    try { saveInterview(window.localStorage, flow); setSaveError('') }
+    try { saveInterview(appStorage, flow); setSaveError('') }
     catch (error) { setSaveError(`Zwischenspeichern fehlgeschlagen: ${(error as Error).message}`) }
   }, [flow])
 
@@ -99,8 +100,8 @@ export function KitaPage() {
   function move(next: number) { change({ step: next }) }
   function begin() {
     try {
-      const next = flow ?? startInterview(window.localStorage)
-      saveInterview(window.localStorage, { ...next, paused: false }, true)
+      const next = flow ?? startInterview(appStorage)
+      saveInterview(appStorage, { ...next, paused: false }, true)
       setFlow({ ...next, paused: false }); setEditing(true); setErrors([])
     } catch (error) { setErrors([(error as Error).message]) }
   }
@@ -118,10 +119,10 @@ export function KitaPage() {
     const issues = validateInterview(flow, step < 5 ? step : undefined)
     if (issues.length) { setErrors(issues); return }
     try {
-      saveInterview(window.localStorage, flow)
+      saveInterview(appStorage, flow)
       if (step < 5) { move(step + 1); return }
-      finishInterview(window.localStorage, flow)
-      setFlow(null); setSaved(loadSetup(window.localStorage)); setEditing(false); setNotice('Deine Einrichtung ist abgeschlossen.'); setSaveError('')
+      finishInterview(appStorage, flow)
+      setFlow(null); setSaved(loadSetup(appStorage)); setEditing(false); setNotice('Deine Einrichtung ist abgeschlossen.'); setSaveError('')
       window.location.hash = '#dashboard'
     } catch (error) { setErrors([(error as Error).message]) }
   }
@@ -129,12 +130,12 @@ export function KitaPage() {
     if (!flow) return
     try {
       const next = { ...flow, paused: true }
-      saveInterview(window.localStorage, next); setFlow(next); setEditing(false); window.location.hash = '#dashboard'
+      saveInterview(appStorage, next); setFlow(next); setEditing(false); window.location.hash = '#dashboard'
     } catch (error) { setErrors([(error as Error).message]) }
   }
   function reloadData() {
     if (!window.confirm('Interviewantworten durch die aktuell gespeicherten Stammdaten ersetzen?')) return
-    try { setFlow(startInterview(window.localStorage)); setSaved(loadSetup(window.localStorage)); setErrors([]) }
+    try { setFlow(startInterview(appStorage)); setSaved(loadSetup(appStorage)); setErrors([]) }
     catch (error) { setErrors([(error as Error).message]) }
   }
   function addMember() {

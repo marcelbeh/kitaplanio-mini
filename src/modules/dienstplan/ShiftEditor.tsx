@@ -1,3 +1,4 @@
+import { appStorage } from '../../cloud/workspace'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Employee } from '../mitarbeiter/employees'
@@ -36,12 +37,12 @@ export function ShiftEditor({ initial, mode, data, onDone, onCancel, onDraftSave
         if (overlappingShifts(draft, data.shifts).length) throw Error('Zeitüberschneidung: Bitte die Vorschauzeiten prüfen.')
         onDraftSave(draft); return
       }
-      saveShift(window.localStorage, draft, mode, mode === 'update' ? initial : undefined); onDone(draft.date, 'Schicht gespeichert.') }
+      saveShift(appStorage, draft, mode, mode === 'update' ? initial : undefined); onDone(draft.date, 'Schicht gespeichert.') }
     catch (error) { setError((error as Error).message) }
   }
   function remove() {
     try { if (onDraftDelete) { onDraftDelete(); return }
-      deleteShift(window.localStorage, initial); onDone(initial.date, 'Schicht gelöscht.') }
+      deleteShift(appStorage, initial); onDone(initial.date, 'Schicht gelöscht.') }
     catch (error) { setError((error as Error).message) }
   }
   return <section className="kita-card schedule-editor employee-page" aria-label="Schicht bearbeiten">

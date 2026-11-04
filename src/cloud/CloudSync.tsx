@@ -3,6 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { equal, overview } from './dataset'
 import { ACTIVE_KEY, CACHE_PREFIX, DIRTY_EVENT, WORKSPACE_EVENT, isDirty, leaveWorkspace, readWorkspace } from './workspace'
 import { openWorkspace, resolveConflict, supabaseRemote, synchronize } from './sync'
+import { BackupCheck, CloudSetup } from './CloudSetup'
+import { captureLocal, makeBackup, verifyBackupFile } from './firstImport'
+import type { LocalBackup } from './firstImport'
 import type { CloudRecord, Conflict, SyncResult } from './sync'
 
 export function CloudSync({ client, owner, onStatus }: { client: SupabaseClient | null; owner?: string; onStatus: (status: string) => void }) {
@@ -12,6 +15,8 @@ export function CloudSync({ client, owner, onStatus }: { client: SupabaseClient 
   const [busy, setBusy] = useState(false), [message, setMessage] = useState('')
   const [conflict, setConflict] = useState<Conflict | null>(null)
   const [opening, setOpening] = useState<CloudRecord | null>(null)
+  const [setupOpen, setSetupOpen] = useState(false)
+  const [openingBackup, setOpeningBackup] = useState<LocalBackup | null>(null), [openingProof, setOpeningProof] = useState<LocalBackup | null>(null)
   const [choice, setChoice] = useState<'local' | 'cloud' | null>(null)
   let workspace = null, storageError = ''
   try { workspace = readWorkspace(window.localStorage) } catch { storageError = 'Arbeitsbestand konnte nicht gelesen werden. Keine Daten wurden überschrieben.' }
@@ -32,7 +37,7 @@ export function CloudSync({ client, owner, onStatus }: { client: SupabaseClient 
       window.removeEventListener('online', connection); window.removeEventListener('offline', connection); window.removeEventListener('storage', storage)
     }
   }, [])
-  useEffect(() => { setConflict(null); setOpening(null); setChoice(null); setMessage('') }, [owner])
+  useEffect(() => { setConflict(null); setOpening(null); setChoice(null); setMessage(''); setSetupOpen(false); setOpeningBackup(null); setOpeningProof(null) }, [owner])
   useEffect(() => {
     if (!client) return
     const { data } = client.auth.onAuthStateChange((_event, session) => {
@@ -46,6 +51,8 @@ export function CloudSync({ client, owner, onStatus }: { client: SupabaseClient 
     const check = () => { if (liveOwner.current !== expectedOwner || authEpoch.current !== epoch) throw Error('Anmeldung inzwischen geändert. Keine lokale Übernahme; bitte erneut prüfen.') }
     return {
       async read() { check(); const value = await backend.read(); check(); return value },
+      async inspect() { check(); const value = await backend.inspect(); check(); return value },
+      async initialize(...args: Parameters<typeof backend.initialize>) { check(); await backend.initialize(...args); check() },
       async cas(...args: Parameters<typeof backend.cas>) { check(); const value = await backend.cas(...args); check(); return value },
     }
   }
@@ -65,19 +72,29 @@ export function CloudSync({ client, owner, onStatus }: { client: SupabaseClient 
   }
   return <section className="cloud-sync" aria-label="Cloud-Synchronisierung">
     <h3>Deine Daten · {status}</h3>
-    <p className="kita-help">{workspace ? 'Separater Cloud-Arbeitsbestand. Synchronisierung nur auf Knopfdruck; offline lokal bearbeitbar.' : 'Bisherige lokale Daten bleiben erhalten. Ihre Erstübernahme erfolgt ausdrücklich mit P8c, hier werden sie niemals hochgeladen.'}</p>
+    <p className="kita-help">{workspace ? 'Separater Cloud-Arbeitsbestand. Synchronisierung nur auf Knopfdruck; offline lokal bearbeitbar.' : 'Bisherige lokale Daten bleiben erhalten. Eine Erstübernahme startet nur über den Einrichtungsassistenten mit geprüfter Sicherung und ausdrücklicher Bestätigung.'}</p>
     {workspace && <p className="kita-help">Letzte erfolgreiche Synchronisierung: {new Date(workspace.lastSync).toLocaleString('de-DE')} · Cloud-Version {workspace.revision}</p>}
     {(message || storageError) && <p role="status">{message || storageError}</p>}
     {busy && <p role="status">Synchronisierung wird geprüft …</p>}
-    {!workspace && !storageError && <button className="kita-button" disabled={!available} onClick={() => void run(async () => {
+    {!workspace && !storageError && !setupOpen && <button className="kita-button secondary" disabled={!available} onClick={() => { setOpening(null); setSetupOpen(true); setMessage('') }}>Cloud mit lokalen Daten einrichten</button>}
+    {!workspace && setupOpen && owner && <CloudSetup key={owner} owner={owner} remote={remote} busy={busy} available={available} run={run} onCancel={() => setSetupOpen(false)} onDone={() => { setSetupOpen(false); setMessage('Erstübernahme vollständig zurückgelesen und geprüft. Cloud-Arbeitsbereich geöffnet; Originaldaten und Sicherung bleiben erhalten.') }} />}
+    {!workspace && !storageError && !setupOpen && <button className="kita-button" disabled={!available} onClick={() => void run(async () => {
+      const source = makeBackup(window.localStorage, owner!, crypto.randomUUID())
       const cloud = await remote().read()
-      setOpening(cloud)
+      setOpening(cloud); setOpeningBackup(source); setOpeningProof(null)
     })}>Cloud-Datenbestand öffnen</button>}
     {opening && !workspace && <div className="cloud-confirm" role="group" aria-label="Cloud-Arbeitsbestand öffnen bestätigen">
       <p>Cloud-Version {opening.revision}: {overview(opening.payload)}</p>
       <p>Separaten Cloud-Arbeitsbestand öffnen? Ein bereits lokal zwischengespeicherter Cloud-Bestand einschließlich Offline-Änderungen wird weiterverwendet. Bisherige lokale Daten bleiben unverändert. Offene Formulare werden neu geladen.</p>
-      <button className="kita-button" disabled={!available} onClick={() => void run(async () => {
+      <p>Auch auf einem zweiten Gerät werden lokale Daten nicht übernommen oder ersetzt. Vor dem Wechsel bestehende lokale Daten bitte sichern; offene Formulare werden geschlossen.</p>
+      {openingBackup && Object.values(openingBackup.raw).some(value => value !== null) && <BackupCheck key={openingBackup.initializationId} backup={openingBackup} disabled={busy} onVerified={setOpeningProof} />}
+      <button className="kita-button" disabled={!available || !!openingBackup && Object.values(openingBackup.raw).some(value => value !== null) && !openingProof} onClick={() => void run(async () => {
         const backend = remote(), latest = await backend.read()
+        if (!openingBackup || !equal(captureLocal(window.localStorage), openingBackup.raw)) throw Error('Lokaler Stand inzwischen geändert. Bitte Vorschau neu öffnen und erneut sichern.')
+        if (Object.values(openingBackup.raw).some(value => value !== null)) {
+          if (!openingProof) throw Error('Bitte gespeicherte lokale Sicherung auswählen.')
+          verifyBackupFile(JSON.stringify(openingProof), openingBackup, window.localStorage)
+        }
         if (latest.revision !== opening.revision || !equal(latest.payload, opening.payload)) { setOpening(latest); setMessage('Cloud wurde inzwischen geändert. Bitte erneut bestätigen.'); return }
         openWorkspace(window.localStorage, owner!, latest, true); setOpening(null)
         window.dispatchEvent(new Event(WORKSPACE_EVENT))

@@ -4,13 +4,15 @@ import type { PlanIssue } from './checks'
 import type { SpecialDemand } from './staffing'
 import type { Draft } from './generator'
 import { proposalCoverage } from './generator'
-import { dateLabel, formatMinutes, workTime } from './schedule'
+import { fairnessReport } from './fairness'
+import { dateLabel, formatMinutes } from './schedule'
 
 export function GeneratorPanel({ draft, setup, dates, issues, error, onGenerate, onDiscard, onAdopt }: { draft: Draft | null; setup: KitaSetup | null; dates: string[]; issues: PlanIssue[]; error: string; onGenerate: (demands: SpecialDemand[]) => void; onDiscard: () => void; onAdopt: () => void }) {
   const [demands, setDemands] = useState<SpecialDemand[]>([])
   const [confirm, setConfirm] = useState(false)
   useEffect(() => { setConfirm(false) }, [draft?.proposal])
   const hard = issues.filter(issue => issue.kind === 'conflict').length
+  const fairness = draft ? fairnessReport(draft.context, draft.proposal) : null
   const coverage = draft ? proposalCoverage(draft.context, draft.proposal) : []
   function change(index: number, patch: Partial<SpecialDemand>) { setDemands(demands.map((demand, i) => i === index ? { ...demand, ...patch } : demand)) }
   return <section className="kita-card generator-panel employee-page" aria-label="Dienstplanvorschlag">
@@ -30,10 +32,14 @@ export function GeneratorPanel({ draft, setup, dates, issues, error, onGenerate,
       <button className="kita-button" onClick={() => onGenerate(demands)}>Dienstplan vorschlagen</button>
     </> : <>
       <p role="status">{draft.proposal.shifts.length} neue Schichten · {coverage.length} offene/ungeklärte Zeitfenster · {hard} harte Konflikte · {issues.length - hard} Hinweise</p>
+      {!!fairness?.warnings.length && <p className="staffing-status staffing-check" role="status">{fairness.warnings.length} Hinweise zu Verteilung/Wünschen – siehe Übersicht.</p>}
       <p className="kita-help">Neue Schichten sind im Plan markiert und bearbeitbar. Bestehende Schichten sind gesperrt. „+ Schicht“ ergänzt ausschließlich den Entwurf. Pausen bleiben ohne Eingabe leer.</p>
       <details><summary>Lücken, Grenzen und Wochenstunden</summary>
         <ul>{draft.proposal.reasons.map(reason => <li key={reason}>{reason}</li>)}{coverage.map(window => <li key={`${window.date}:${window.area}:${window.start}`}>{dateLabel(window.date)} · {formatMinutes(window.start)}–{formatMinutes(window.end)} · {window.name}: {window.status === 'check' ? 'Prüfen' : `Soll ${window.required ?? 'nicht konfiguriert'}, Ist ${window.actual}`}</li>)}</ul>
-        <ul>{draft.context.employees.map(person => <li key={person.id}>{person.name}: {formatMinutes(workTime([...draft.context.shifts, ...draft.proposal.shifts].filter(shift => shift.employeeId === person.id && shift.date >= draft.proposal.from && shift.date <= draft.proposal.to)).net)} netto / Vertrag {formatMinutes(person.weeklyMinutes)}</li>)}</ul>
+        <h3>Stunden und Dienstverteilung</h3><p className="kita-help">Dienste zählen je Kategorie und Datum einmal, auch bei mehreren Teilschichten. Teilzeit wird über Vertragsstunden gewichtet.</p>
+        <ul>{fairness?.rows.map(person => <li key={person.id}>{person.name}: {formatMinutes(person.net)} / {formatMinutes(person.contract)} netto · Früh {person.early} · Spät {person.late} · Wochenende {person.weekend}</li>)}</ul>
+        <ul>{fairness?.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul>
+        <h3>Warum diese Zuordnungen?</h3><p className="kita-help">Begründungen zum generierten Ausgangsvorschlag. Manuelle Änderungen werden in Stunden und Verteilung neu berechnet.</p><ul>{draft.proposal.explanations?.map(reason => <li key={reason}>{reason}</li>)}</ul>
         {!!draft.proposal.demands.length && <p className="kita-help">Wochenend-Sollwerte gelten nur in dieser Vorschau. Nach Übernahme bleiben die Schichten erhalten; ohne dauerhaftes Sonderbedarfsmodell zeigt die normale Ampel wieder „Bedarf nicht festgelegt“.</p>}
       </details>
       <div className="kita-actions"><button className="kita-button" disabled={hard > 0 || !draft.proposal.shifts.length} onClick={() => setConfirm(true)}>Vorschlag übernehmen</button><button className="kita-button secondary" onClick={onDiscard}>Verwerfen</button></div>

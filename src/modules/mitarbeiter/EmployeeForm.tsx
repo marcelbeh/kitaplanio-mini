@@ -1,5 +1,5 @@
 import type { Employee, GroupReference, PlanningRule, Weekday } from './employees'
-import { DAYS, hoursToMinutes } from './employees'
+import { DAYS, PLANNING_DAYS, hoursToMinutes } from './employees'
 import type { TimeRange } from '../kita/setup'
 import { useEffect, useRef, useState } from 'react'
 
@@ -70,6 +70,12 @@ export function EmployeeForm({ initial, groups, onSave, onCancel, part = 'all', 
         }} />Feste Zeiten verwenden</label>
         {draft.fixedTimes[day.id] && <TimeInputs value={draft.fixedTimes[day.id]!} onChange={times => change({ fixedTimes: { ...draft.fixedTimes, [day.id]: times } })} />}
       </fieldset>)}
+    </fieldset>
+    <fieldset className="employee-days"><legend>Arbeitszeitwünsche (optional)</legend>
+      <p className="kita-help">Wünsche werden nach harten Regeln berücksichtigt. Bevorzugte freie Tage sind keine Sperrtage. Freitext wird weiterhin nicht automatisch interpretiert.</p>
+      <fieldset className="employee-days"><legend>Bevorzugte freie Tage</legend><div className="employee-day-options">{PLANNING_DAYS.map(day => <label className="employee-check" key={day.id}><input type="checkbox" checked={draft.preferences?.preferredDaysOff?.includes(day.id) ?? false} onChange={event => change({ preferences: { ...draft.preferences, preferredDaysOff: event.target.checked ? [...(draft.preferences?.preferredDaysOff ?? []), day.id] : draft.preferences?.preferredDaysOff?.filter(item => item !== day.id) } })} />{day.label}</label>)}</div></fieldset>
+      <label className="employee-check"><input type="checkbox" checked={!!draft.preferences?.preferredHours} onChange={event => change({ preferences: { ...draft.preferences, preferredHours: event.target.checked ? { start: '', end: '' } : undefined } })} />Wunschzeitfenster hinterlegen</label>
+      {draft.preferences?.preferredHours && <TimeInputs value={draft.preferences.preferredHours} onChange={preferredHours => change({ preferences: { ...draft.preferences, preferredHours } })} />}
     </fieldset>
     <section className="kita-card"><h3>Zusätzliche Planungsregeln</h3>
       <p className="kita-help">Freie Beschreibungen werden nur gespeichert und angezeigt. Es erfolgt keine automatische Interpretation.</p>

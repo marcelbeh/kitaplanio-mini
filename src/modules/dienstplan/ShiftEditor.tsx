@@ -1,3 +1,4 @@
+import { netTimeLabel } from './presentation'
 import { appStorage } from '../../cloud/workspace'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -58,8 +59,8 @@ export function ShiftEditor({ initial, mode, data, onDone, onCancel, onDraftSave
         <label>Ende<input required type="time" value={value.end} onChange={event => change({ end: event.target.value })} /></label>
         <label>Pause in Minuten (optional)<input type="number" min="0" step="1" inputMode="numeric" value={pause} onChange={event => { setPause(event.target.value); setError(''); setDeleting(false) }} /></label>
       </div>
-      <p className="kita-help schedule-form-help">Beginn und Ende gelten für dasselbe Datum. Ohne Pausenangabe wird nichts abgezogen. Es werden keine Standardpausen ergänzt.</p>
-      {times && <p className="schedule-time-summary" role="status">Brutto {formatMinutes(times.gross)} · Pause {pause === '' ? 'nicht erfasst' : formatMinutes(times.pause)} · Netto <strong>{formatMinutes(times.net)}</strong></p>}
+      <p className="kita-help schedule-form-help">Beginn und Ende gelten für dasselbe Datum. Ohne Pausenangabe wird nichts geschätzt; die Nettozeit bleibt ungeklärt. Es werden keine Standardpausen ergänzt.</p>
+      {times && <p className="schedule-time-summary" role="status">Brutto {formatMinutes(times.gross)} · Pause {pause === '' ? 'nicht erfasst' : formatMinutes(times.pause)} · Netto <strong>{netTimeLabel([draft])}</strong></p>}
       {!!overlaps.length && <p className="kita-errors" role="status">Zeitüberschneidung mit {overlaps.map(shift => `${shift.start}–${shift.end}`).join(', ')}. Bitte die Zeiten korrigieren.</p>}
       {!!warnings.length && <div className="schedule-conflict" role="status"><strong>Bitte prüfen – Speichern bleibt möglich:</strong><ul>{warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></div>}
       <div className="kita-actions"><button type="submit" className="kita-button">Schicht speichern</button><button type="button" className="kita-button secondary" onClick={onCancel}>Abbrechen</button>{mode === 'update' && <button type="button" className="kita-button secondary" onClick={() => setDeleting(true)}>Schicht löschen</button>}</div>

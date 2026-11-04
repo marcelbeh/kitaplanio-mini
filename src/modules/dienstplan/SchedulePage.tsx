@@ -1,7 +1,7 @@
 import { TemplatePanel } from './TemplatePanel'
 import { CopyWeekPanel } from './CopyWeekPanel'
 import { MonthView } from './MonthView'
-import { shiftPeriods } from './presentation'
+import { netTimeLabel, shiftPeriods } from './presentation'
 import { appStorage } from '../../cloud/workspace'
 import { useEffect, useState } from 'react'
 import { loadSetup, savePlanningLimits } from '../kita/setup'
@@ -106,12 +106,11 @@ export function SchedulePage({ initialView = 'week', initialSection, onViewChang
     window.requestAnimationFrame(() => document.getElementById('page-title')?.focus())
   }
   function weeklySummary(person: SchedulePerson) {
-    const totals = workTime(data.shifts.filter(shift => shift.employeeId === person.id && shift.date >= week.monday && shift.date <= week.days[6]))
-    return <small className="schedule-week-total">Woche (Mo–So): {formatMinutes(totals.net)} netto</small>
+    const entries = data.shifts.filter(shift => shift.employeeId === person.id && shift.date >= week.monday && shift.date <= week.days[6])
+    return <small className="schedule-week-total">Woche (Mo–So) · Netto: {netTimeLabel(entries)}</small>
   }
   function personDetails(person: SchedulePerson, date: string) {
     const entries = dayEntries(person.id, date, data.shifts, data.absences)
-    const total = workTime(entries.shifts)
     return <div className="schedule-details">
       {entries.shifts.map(shift => {
         const proposed = draft?.proposal.shifts.some(item => item.id === shift.id) ?? false
@@ -122,12 +121,12 @@ export function SchedulePage({ initialView = 'week', initialSection, onViewChang
           <strong>{shift.start}–{shift.end}</strong>
           <span className="schedule-periods">{shiftPeriods(shift, data.setup).map(period => <span className={`schedule-period schedule-period-${period.kind}`} key={period.kind}>{period.label}</span>)}</span>
           <span className="schedule-group" data-tone={tone(shift.groupId)}>{group(shift.groupId)}</span>
-          <small>Brutto {formatMinutes(workTime([shift]).gross)} · Pause {shift.breakMinutes === undefined ? 'nicht erfasst' : formatMinutes(shift.breakMinutes)} · Netto {formatMinutes(workTime([shift]).net)}</small>
+          <small>Brutto {formatMinutes(workTime([shift]).gross)} · Pause {shift.breakMinutes === undefined ? 'nicht erfasst' : formatMinutes(shift.breakMinutes)} · Netto {netTimeLabel([shift])}</small>
           <span className="schedule-edit-hint">{fixed ? 'Fixiert' : 'Bearbeiten ↗'}</span>
         </button>
       })}
       {!entries.shifts.length && <><span className="schedule-empty">Keine Schicht eingetragen</span><span className="schedule-group" data-tone={tone(person.groupId)}>{group(person.groupId)}</span></>}
-      {!!entries.shifts.length && <small className="schedule-day-total">Tag: {formatMinutes(total.net)} netto</small>}
+      {!!entries.shifts.length && <small className="schedule-day-total">Tag · Netto: {netTimeLabel(entries.shifts)}</small>}
       <button className="schedule-add" disabled={shiftsUnavailable || !!person.historical} onClick={() => openShift(person, date)}>+ Schicht<span className="schedule-sr-only"> für {person.name}, {dateLabel(date)}</span></button>
       {entries.absences.map(absence => <div className="schedule-absence" key={absence.id}><strong>{ABSENCE_TYPES[absence.type]}</strong><small>{PORTIONS[absence.portion]}</small></div>)}
     </div>

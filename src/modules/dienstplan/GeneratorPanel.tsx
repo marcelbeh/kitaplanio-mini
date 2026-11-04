@@ -1,3 +1,4 @@
+import { netTimeLabel } from './presentation'
 import { useEffect, useState } from 'react'
 import type { KitaSetup } from '../kita/setup'
 import type { PlanIssue } from './checks'
@@ -37,7 +38,7 @@ export function GeneratorPanel({ draft, setup, dates, issues, error, onGenerate,
       <details><summary>Lücken, Grenzen und Wochenstunden</summary>
         <ul>{draft.proposal.reasons.map(reason => <li key={reason}>{reason}</li>)}{coverage.map(window => <li key={`${window.date}:${window.area}:${window.start}`}>{dateLabel(window.date)} · {formatMinutes(window.start)}–{formatMinutes(window.end)} · {window.name}: {window.status === 'check' ? 'Prüfen' : `Soll ${window.required ?? 'nicht konfiguriert'}, Ist ${window.actual}`}</li>)}</ul>
         <h3>Stunden und Dienstverteilung</h3><p className="kita-help">Dienste zählen je Kategorie und Datum einmal, auch bei mehreren Teilschichten. Teilzeit wird über Vertragsstunden gewichtet.</p>
-        <ul>{fairness?.rows.map(person => <li key={person.id}>{person.name}: {formatMinutes(person.net)} / {formatMinutes(person.contract)} netto · Früh {person.early} · Spät {person.late} · Wochenende {person.weekend}</li>)}</ul>
+        <ul>{fairness?.rows.map(person => <li key={person.id}>{person.name} · Netto: {netTimeLabel([...draft.context.shifts, ...draft.proposal.shifts].filter(shift => shift.employeeId === person.id && shift.date >= draft.proposal.from && shift.date <= draft.proposal.to))} · Vertrag: {formatMinutes(person.contract)} · Früh {person.early} · Spät {person.late} · Wochenende {person.weekend}</li>)}</ul>
         <ul>{fairness?.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul>
         <h3>Warum diese Zuordnungen?</h3><p className="kita-help">Begründungen zum generierten Ausgangsvorschlag. Manuelle Änderungen werden in Stunden und Verteilung neu berechnet.</p><ul>{draft.proposal.explanations?.map(reason => <li key={reason}>{reason}</li>)}</ul>
         {!!draft.proposal.demands.length && <p className="kita-help">Wochenend-Sollwerte gelten nur in dieser Vorschau. Nach Übernahme bleiben die Schichten erhalten; ohne dauerhaftes Sonderbedarfsmodell zeigt die normale Ampel wieder „Bedarf nicht festgelegt“.</p>}

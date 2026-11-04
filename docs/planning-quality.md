@@ -1,0 +1,23 @@
+# P16 · Planungsqualität ohne KI
+
+Basis: main `8ce50ea8a6d20a7dea43b5919f639c3f10ff9397` (P14). Der offene P15-PR wird nicht einbezogen. Keine KI, externen Planungsdienste, SQL-Migrationen, Cloud-Konfigurations- oder Speicherformatänderungen.
+
+## Geprüfte Pfade und belegte Befunde
+
+- P6-Generator, P12-Wochenkopie/P13-Vorlagen, P7-Veröffentlichungen und P5-Schichteditor verwenden bereits eigene Vorschauen und Bestätigungen. Kopie/Vorlagen schützen Freigaben und Arbeitsbereich schon; der Generator verglich bisher nur fünf fachliche Quelldatenbereiche. Veröffentlichung oder Wechsel zwischen identischen lokalen/Cloud-Daten konnte daher unbemerkt bleiben. Behoben: Der vorhandene interne Snapshot umfasst jetzt auch Freigaben und Arbeitsbereich. Bereits veröffentlichte Zielwochen werden beim Generieren/Übernehmen gesperrt; ungültige Freigaben stoppen das Lesen. Übernahme bleibt ein einzelner gemeinsamer Schreibvorgang, nur nach Bestätigung und erneuter Prüfung. Exakt eine vollständige KW ist erforderlich. Keine bestehenden Schichten werden ersetzt.
+- Pausen sind optional; `workTime` zieht weiterhin ausschließlich erfasste Minuten ab. Bisher zeigte der Dienstplan trotz fehlender Pausendauer eine exakte Nettozeit, die Besetzung behandelte die Lücke als bestätigte Nullpause. Behoben: kleine gemeinsame Anzeigehilfe in der bestehenden `presentation.ts`, keine zweite Stundenrechnung. Wochen-/Tages-/Schichtanzeige, Formular, Generatorübersicht und Team-Ausdruck zeigen fehlende Nettozeit als ungeklärt. Positive Pausendauer ohne Zeitlage bleibt ungeklärt für Intervalle, ist für die Nettozeit aber bekannt. Ausdrückliche 0 Minuten sind berechenbar; keine Standardpausen, Pausenlage oder Regeln werden erfunden. Die Regelprüfung verzichtet bei fehlenden Pausen auf vermeintlich exakte Vertragsabweichungen/Tagesverteilungswerte und zeigt stattdessen einen verständlichen Hinweis.
+- Die bisherige Regelprüfung meldete Mindestbesetzung ausschließlich für den Status „Unterbesetzt“. Beispiel: Soll 2, höchstens 1 zugeordnet, aber mit unklarer Pause/Halbtag: Die Ampel ist zu Recht „Prüfen“, trotzdem fehlt sicher Personal. Behoben: gemeinsame reine Erkennung in `staffing.ts`; Regelprüfung und kompakte Ampelhinweise nutzen dieselbe Funktion. Nur wenn selbst die maximal mögliche Besetzung sicher unter Soll liegt, entsteht ein harter Konflikt. Unvollständige Quellen und nicht auflösbare Gruppenzuordnungen werden dabei nicht in erfundene Verstöße umgedeutet.
+
+## Erhaltener Bestand
+
+Schicht-, Mitarbeiter-, Abwesenheits-, Termin-, Kita- und Freigabeformate sowie alle Speicher-Keys bleiben unverändert. Keine Migration, kein Reset, kein Upload. Veröffentlichte Snapshots bleiben unverändert; bewusste manuelle Änderungen am Arbeitsplan bleiben wie bisher möglich und ändern keine alte Veröffentlichung. Die Generatorheuristik/Fairnessrangfolge wird nicht neu gebaut. Unklare Bestandsanwesenheit bleibt ein manueller Prüfpunkt statt Anlass für zusätzliche erfundene Dienste. Wochenend-Sonderbedarf wird nicht aus Öffnungszeiten abgeleitet.
+
+## Prüfungen und offene Risiken
+
+Neue fokussierte Fälle in `tests/planning-quality.test.mjs`: fehlende/Null-/positive Pause, gemeinsame Zeitanzeige, definitive/ungeklärte Unterbesetzung, unvollständige Quellen, Wochenenden, Freigabe-/Arbeitsbereich-/Datenwechsel, vollständige KW, ausdrückliche Bestätigung, Erhalt bestehender Schichten und atomarer Speicherfehler. Bestehende Generator-Erwartungen sind an die korrekt ungeklärte Besetzung neu vorgeschlagener Schichten angepasst; es wird keine Nullpause erzeugt, um Tests grün zu machen.
+
+Gezielte vorhandene Regressionstests: Schichtbearbeitung, Besetzung, Regelprüfung, Generator/Fairness, Kopieren, Vorlagen, Veröffentlichungen sowie Monatsansicht/Demo und Navigation. TypeScript und Produktionsbuild prüfen.
+
+Manuell offen: Safari auf Mac und iPhone – Lesbarkeit längerer Warnungen, Bearbeitung mit leerer/0/positiver Pause, Generatorvorschau/Bestätigung, veröffentlichte Version wählen und A4-Druck. Kein erneuter Browser-/Serverstart in der bekannten blockierten Sandbox.
+
+Grenzen: Ein einzelner lokaler Schicht-/Workspace-Schreibvorgang ist atomar; der abschließende Snapshotvergleich ist keine browserweite Transaktion zwischen mehreren gleichzeitig schreibenden Tabs. Andere Stundenansichten außerhalb der Dienstplan-/Druck-/Generatoranzeige behalten ihre bisherige erfasste Rechenbasis und vorhandenen Hinweise auf fehlende Pausen. Keine gesetzlichen Vorgaben oder vollständige Personaloptimierung werden behauptet. Live erst nach gesondertem Merge und erfolgreichem Deployment: https://marcelbeh.github.io/kitaplanio-mini/ .

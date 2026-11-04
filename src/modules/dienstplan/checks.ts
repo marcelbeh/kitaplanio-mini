@@ -5,7 +5,7 @@ import type { Shift } from './schedule'
 import { SHIFTS_KEY, addDays, formatMinutes, validDate, validateShift, workTime } from './schedule'
 import { wishMisses } from './fairness'
 import type { SpecialDemand } from './staffing'
-import { calculateStaffing, criticalWindows } from './staffing'
+import { calculateStaffing, criticalWindows, isDefiniteShortage } from './staffing'
 
 export type CheckOptions = PlanningLimits
 export type PlanIssue = { id: string; kind: 'conflict' | 'hint'; date: string; person: string; cause: string; correction: string }
@@ -59,6 +59,7 @@ export function checkPlan(input: { from: string; to: string; setup: KitaSetup | 
     const away = absences.filter(absence => absence.employeeId === shift.employeeId && absence.startDate <= shift.date && absence.endDate >= shift.date)
     if (away.some(absence => absence.portion === 'full')) add(`absence:${shift.employeeId}:${shift.date}`, 'conflict', shift.date, name(shift), 'Schicht trotz ganztägiger Abwesenheit.', 'Schicht oder Abwesenheit fachlich prüfen und bei Bedarf manuell korrigieren.')
     else if (away.length) add(`half:${shift.employeeId}:${shift.date}`, 'hint', shift.date, name(shift), 'Halbtägige Abwesenheit ohne genaue Uhrzeit: Anwesenheit ungeklärt.', 'Zeitliche Überschneidung manuell prüfen; kein pauschaler halber Tag wird abgezogen.')
+    if (shift.breakMinutes === undefined) add(`missing-pause:${shift.employeeId}:${shift.date}`, 'hint', shift.date, name(shift), 'Pausendauer nicht vollständig erfasst; Nettozeit und Besetzung sind ungeklärt.', 'Pausendauer ausdrücklich prüfen und eintragen, auch 0 Minuten, falls tatsächlich keine Pause vorgesehen ist. Es wird keine Standardpause ergänzt.')
     if ((shift.breakMinutes ?? 0) > 0) add(`pause:${shift.id}`, 'hint', shift.date, name(shift), `${formatMinutes(shift.breakMinutes!)} Pause ohne zeitliche Zuordnung (${shift.start}–${shift.end}).`, 'Pausenlage im Team abstimmen; Nettozeit ist berechnet, Intervallbesetzung bleibt ungeklärt.')
     if (positive(options.maxShiftMinutes) && minute(shift.end) - minute(shift.start) > options.maxShiftMinutes!) add(`long:${shift.id}`, 'hint', shift.date, name(shift), `Bruttodienst ${formatMinutes(minute(shift.end) - minute(shift.start))} überschreitet die gewählte Grenze ${formatMinutes(options.maxShiftMinutes!)}.`, 'Dienstdauer prüfen. Dies ist ein frei gewählter Hinweis, keine rechtliche Bewertung.')
     if (!person) continue
@@ -95,7 +96,7 @@ export function checkPlan(input: { from: string; to: string; setup: KitaSetup | 
       const fixed = person.fixedTimes[weekday as Weekday]
       if (fixed && (entries[0].start !== fixed.start || entries.some(shift => shift.start < fixed.start || shift.end > fixed.end) || entries.reduce((end, shift) => shift.end > end ? shift.end : end, '') !== fixed.end)) add(`fixed:${person.id}:${date}`, 'conflict', date, person.name, `Dienstbeginn/-ende weicht von verbindlichen Tageszeiten ${fixed.start}–${fixed.end} ab.`, 'Die gespeicherten festen Tageszeiten oder die Schichten dieses Tages prüfen.')
     }
-    if (!sourceUnavailable && Number.isSafeInteger(person.weeklyMinutes) && person.weeklyMinutes > 0) {
+    if (!sourceUnavailable && current.every(shift => shift.breakMinutes !== undefined) && Number.isSafeInteger(person.weeklyMinutes) && person.weeklyMinutes > 0) {
       const net = workTime(current).net
       if (net !== person.weeklyMinutes) add(`hours:${person.id}`, 'hint', from, person.name, `Geplante Nettozeit Mo–So ${formatMinutes(net)}; vertraglich ${formatMinutes(person.weeklyMinutes)}.`, 'Wochenumfang einschließlich Wochenenddiensten prüfen; Abwesenheiten werden nicht als fiktive Arbeitszeit gutgeschrieben.')
       const daily = [...perDay.values()].map(entries => workTime(entries).net)
@@ -108,7 +109,7 @@ export function checkPlan(input: { from: string; to: string; setup: KitaSetup | 
     const day = calculateStaffing(date, setup, shifts, absences, employees, sourceUnavailable, input.specialDemands)
     if (day.status === 'unconfigured' || day.status === 'unspecified' && weekShifts.some(shift => shift.date === date)) add(`demand:${date}`, 'hint', date, 'Betreuungsbereiche', day.status === 'unspecified' ? 'Bedarf für Wochenend-Sonderdienst nicht festgelegt.' : 'Soll-Besetzung nicht vollständig konfiguriert.', 'Konkrete Bedarfswerte fachlich festlegen; es werden keine Personalvorgaben erfunden.')
     for (const window of criticalWindows(day.windows)) {
-      if (window.status === 'under') add(`staff:${date}:${window.area}:${window.start}`, 'conflict', date, window.name, `${formatMinutes(window.start)}–${formatMinutes(window.end)}: Mindestbesetzung unterschritten (Soll ${window.required}, Ist ${window.actual}).`, 'Besetzung dieses Bereichs oder ausdrücklich konfigurierte Sollvorgabe prüfen.')
+      if (!sourceUnavailable && isDefiniteShortage(window)) add(`staff:${date}:${window.area}:${window.start}`, 'conflict', date, window.name, `${formatMinutes(window.start)}–${formatMinutes(window.end)}: Mindestbesetzung unterschritten (Soll ${window.required}, ${window.status === 'check' ? `höchstens ${window.possible} zugeordnet; Anwesenheit ungeklärt` : `Ist ${window.actual}`}).`, 'Besetzung dieses Bereichs oder ausdrücklich konfigurierte Sollvorgabe prüfen.')
     }
   }
   return [...issues.values()].sort((a, b) => a.date.localeCompare(b.date) || (a.kind === b.kind ? 0 : a.kind === 'conflict' ? -1 : 1) || a.person.localeCompare(b.person, 'de') || a.id.localeCompare(b.id))

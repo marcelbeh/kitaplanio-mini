@@ -12,6 +12,10 @@ import { PlanChecks } from './PlanChecks'
 import { GeneratorPanel } from './GeneratorPanel'
 import { adoptProposal, generateProposal, readGeneratorContext } from './generator'
 import type { Draft } from './generator'
+import { PublicationPanel } from './PublicationPanel'
+import { TeamPlan } from './TeamPlan'
+import { teamPlan } from './publications'
+import type { PublishedPlan } from './publications'
 import { ShiftEditor } from './ShiftEditor'
 import type { Shift } from './schedule'
 import type { SchedulePerson } from './schedule'
@@ -42,6 +46,7 @@ export function SchedulePage() {
   const [notice, setNotice] = useState('')
   const [checkOptions, setCheckOptions] = useState<CheckOptions>(() => storedData.setup?.planningRules ?? {})
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [selectedPublication, setSelectedPublication] = useState<PublishedPlan | null>(null)
   const [rulesMessage, setRulesMessage] = useState('')
   const [generatorError, setGeneratorError] = useState('')
   const data = draft ? { ...draft.context, groups: draft.context.setup?.groups ?? [], errors: [] as string[], shifts: [...draft.context.shifts, ...draft.proposal.shifts], inspection: { entries: [...draft.context.shifts, ...draft.proposal.shifts] } } : storedData
@@ -54,6 +59,8 @@ export function SchedulePage() {
   }, [])
   useEffect(() => { if (!draft) setCheckOptions(storedData.setup?.planningRules ?? {}) }, [storedData, draft])
   const week = calendarWeek(selected)
+  useEffect(() => { setSelectedPublication(null) }, [week.monday])
+  const printable = teamPlan(data, selected)
   const issues = checkPlan({ from: week.monday, to: week.days[6], setup: data.setup, employees: data.employees, absences: data.absences, inspection: data.inspection, errors: data.errors, options: checkOptions, specialDemands: draft?.proposal.demands })
   const people = schedulePeople(data.employees, data.shifts, data.absences, week.monday, week.days[6])
   const occurrences = listOccurrences(data.events, week.monday, week.days[6])
@@ -118,6 +125,8 @@ export function SchedulePage() {
       <p className="kita-help">Wähle ein Datum, um die zugehörige Kalenderwoche zu öffnen.</p>
       {dateError && <p className="kita-errors" role="alert">{dateError}</p>}
     </section>
+    <PublicationPanel plan={printable} selected={selectedPublication} onSelect={setSelectedPublication} issues={issues} locked={!!draft} unavailable={data.errors.length > 0} />
+    {!selectedPublication && <>
     <GeneratorPanel draft={draft} setup={data.setup} dates={week.days} issues={issues} error={generatorError} onGenerate={demands => {
       try { const context = readGeneratorContext(window.localStorage); setCheckOptions(context.setup?.planningRules ?? {}); setDraft({ context, proposal: generateProposal(context, selected, demands) }); setGeneratorError(''); setNotice('') }
       catch (error) { setGeneratorError((error as Error).message) }
@@ -157,5 +166,7 @@ export function SchedulePage() {
       {!people.length && <p className="kita-help">Keine Mitarbeitenden oder gespeicherten Schichten für diesen Tag vorhanden.</p>}
     </section>
     </>}
+    </>}
+    <TeamPlan plan={selectedPublication ?? printable} published={selectedPublication} preview={!!selectedPublication} unavailable={!selectedPublication && data.errors.length > 0} proposal={!!draft} />
   </div>
 }

@@ -7,3 +7,10 @@
 .cloud-panel form { display: grid; gap: 16px; margin: 16px 0; }
 .cloud-panel > .kita-help:last-child { margin: 16px 0 0; }
 @media print { .cloud-account { display: none !important; } }
+.cloud-sync { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 16px; overflow-wrap: anywhere; }
+.cloud-sync h3 { font-size: 17px; }
+.cloud-sync .kita-button { margin: 6px 4px 6px 0; min-height: 44px; max-width: 100%; white-space: normal; }
+.cloud-confirm { margin: 12px 0; padding: 12px; background: var(--lilac-soft); border-radius: 16px; }
+.cloud-confirm dl { font-size: 13px; }
+.cloud-confirm dt { font-weight: 700; margin-top: 10px; }
+.cloud-confirm dd { margin: 4px 0; }

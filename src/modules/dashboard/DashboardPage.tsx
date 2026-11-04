@@ -1,3 +1,4 @@
+import { appStorage } from '../../cloud/workspace'
 import { useEffect, useState } from 'react'
 import { loadSetup } from '../kita/setup'
 import { loadEmployees } from '../mitarbeiter/employees'
@@ -12,14 +13,14 @@ function readOverview() {
   let interview: 'draft' | 'completed' | null = null
   const errors: string[] = []
   try {
-    const kita = loadSetup(window.localStorage)
+    const kita = loadSetup(appStorage)
     completed = kita?.completed === true
     draft = !!kita && !completed
     groups = completed ? kita!.groups.length : 0
   } catch { errors.push('Kita-Einstellungen konnten nicht geladen werden. Vorhandene Daten bleiben unverändert.') }
-  try { employees = loadEmployees(window.localStorage).employees.length }
+  try { employees = loadEmployees(appStorage).employees.length }
   catch { errors.push('Mitarbeiterdaten konnten nicht geladen werden. Vorhandene Daten bleiben unverändert.') }
-  try { interview = loadInterview(window.localStorage)?.status ?? null } catch { errors.push('Der Interview-Zwischenstand konnte nicht geladen werden. Vorhandene Daten bleiben unverändert.') }
+  try { interview = loadInterview(appStorage)?.status ?? null } catch { errors.push('Der Interview-Zwischenstand konnte nicht geladen werden. Vorhandene Daten bleiben unverändert.') }
   return { groups, employees, completed, draft, interview, errors }
 }
 export function DashboardPage() {

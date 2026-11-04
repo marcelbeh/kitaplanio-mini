@@ -6,26 +6,41 @@ import { ACTIVE_KEY, isDirty, readWorkspace, saveWorkspace } from './workspace'
 import type { Workspace } from './workspace'
 
 export type CloudRecord = { revision: number; payload: Payload; updatedAt: string | null }
+export type CloudStatus = { kind: 'empty' } | { kind: 'occupied' } | { kind: 'ready'; record: CloudRecord; initializationId: string | null }
+export type SetupRemote = { inspect(): Promise<CloudStatus>; initialize(payload: Payload, initializationId: string): Promise<void> }
 export type SyncRemote = { read(): Promise<CloudRecord>; cas(revision: number, payload: Payload): Promise<CloudRecord | null> }
 export type Conflict = { remote: CloudRecord; local: Payload; revision: number }
 export type SyncResult = { kind: 'synced' } | { kind: 'conflict'; conflict: Conflict }
-export const PROVISIONING = 'Noch kein ausdrücklich eingerichteter Cloud-Datenbestand. Bestehende lokale Daten werden hier nicht hochgeladen. Die Erstübernahme erfolgt mit P8c; keine leere Cloud-Initialisierung.'
+export const PROVISIONING = 'Noch kein eingerichteter Cloud-Datenbestand. Bitte die ausdrücklich bestätigte Ersteinrichtung (P8c) mit lokaler Sicherung starten. Kein automatischer Upload.'
 function cloudRecord(row: Record<string, unknown> | null): CloudRecord {
   if (!row || row.sync_initialized !== true) throw Error(PROVISIONING)
   if (row.format_version !== 1 || !Number.isSafeInteger(row.revision) || Number(row.revision) < 0 || !(row.updated_at === null || typeof row.updated_at === 'string')) throw Error('Unbekannter Cloud-Versionsstand. Keine Daten geändert.')
   return { revision: Number(row.revision), payload: validatePayload(row.payload), updatedAt: row.updated_at as string | null }
 }
-export function supabaseRemote(client: SupabaseClient, owner: string): SyncRemote {
+export function supabaseRemote(client: SupabaseClient, owner: string): SyncRemote & SetupRemote {
   async function authorize() {
     const access = await verifyCloudAccess(client)
     if (!access.connected || access.userId !== owner) throw Error('Cloud-Sitzung oder Freigabe nicht bestätigt. Bitte erneut anmelden; lokal bleibt alles erhalten.')
   }
+  async function inspect(): Promise<CloudStatus> {
+    await authorize()
+    const { data, error } = await client.from('caro_app_data').select('format_version,payload,revision,sync_initialized,updated_at,initialization_id').eq('owner_id', owner).maybeSingle()
+    if (error) throw Error('Cloud konnte nicht gelesen werden. Verbindung und SQL-Migrationen prüfen; bitte manuell erneut versuchen.')
+    if (!data) return { kind: 'empty' }
+    if (data.sync_initialized === true) return { kind: 'ready', record: cloudRecord(data), initializationId: data.initialization_id }
+    return data.format_version === 1 && data.sync_initialized === false && data.revision === 0 && data.updated_at === null && data.initialization_id === null && equal(data.payload, {}) ? { kind: 'empty' } : { kind: 'occupied' }
+  }
   return {
-    async read() {
+    inspect,
+    async initialize(payload, initializationId) {
       await authorize()
-      const { data, error } = await client.from('caro_app_data').select('format_version,payload,revision,sync_initialized,updated_at').eq('owner_id', owner).maybeSingle()
-      if (error) throw Error('Cloud konnte nicht gelesen werden. Verbindung und P8b-Migration prüfen; bitte manuell erneut versuchen.')
-      return cloudRecord(data)
+      const { error } = await client.rpc('caro_initialize', { p_payload: payload, p_initialization_id: initializationId })
+      if (error) throw Error('Erstübernahme nicht bestätigt. Originaldaten und Backup bleiben erhalten. Über „Stand erneut prüfen“ mit derselben Sicherung fortsetzen; SQL-Migration und Verbindung prüfen.')
+    },
+    async read() {
+      const status = await inspect()
+      if (status.kind !== 'ready') throw Error(PROVISIONING)
+      return status.record
     },
     async cas(revision, payload) {
       await authorize()

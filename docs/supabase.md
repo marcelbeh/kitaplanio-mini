@@ -91,3 +91,7 @@ Offline wird weiter lokal gespeichert; Wiederverbinden löst **keine** Synchroni
 - Supabase Advisor meldet aktuell **„Leaked Password Protection Disabled“**. Im Dashboard bei verfügbarem Tarif aktivieren: [Passwortschutz](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). Keine Auth-Konfiguration wurde automatisch verändert.
 
 Aktuelle Referenzen: [DB-Funktionen, Transaktionen und Ausführungsrechte](https://supabase.com/docs/guides/database/functions), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Datenzugriff absichern](https://supabase.com/docs/guides/database/secure-data). Live erst nach Merge und erfolgreichem Deployment: https://marcelbeh.github.io/kitaplanio-mini/.
+
+## P8c – bestätigte lokale Erstübernahme
+
+Die spätere Erstübernahme, Pflichtsicherung, Wiederaufnahme und neue SQL-Migration sind in [p8c.md](p8c.md) beschrieben. Migration vor Aktivierung installieren; bestehende Cloud-Bestände werden niemals überschrieben oder automatisch zusammengeführt.

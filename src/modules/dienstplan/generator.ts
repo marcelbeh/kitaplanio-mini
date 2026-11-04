@@ -11,10 +11,12 @@ import type { Shift } from './schedule'
 import { calculateStaffing, criticalWindows } from './staffing'
 import type { SpecialDemand } from './staffing'
 import { checkPlan } from './checks'
+import { candidateRank, compareRanks, dutyCounts, respectsLimits, wishMisses } from './fairness'
+import type { DutyKind } from './fairness'
 import type { CheckOptions } from './checks'
 
 export type GeneratorContext = { setup: KitaSetup | null; employees: Employee[]; shifts: Shift[]; absences: Absence[]; events: Event[]; snapshot: (string | null)[] }
-export type Proposal = { from: string; to: string; shifts: Shift[]; demands: SpecialDemand[]; reasons: string[] }
+export type Proposal = { from: string; to: string; shifts: Shift[]; demands: SpecialDemand[]; reasons: string[]; explanations?: string[] }
 export type Draft = { context: GeneratorContext; proposal: Proposal }
 const keys = [STORAGE_KEY, EMPLOYEES_KEY, SHIFTS_KEY, ABSENCES_KEY, EVENTS_KEY]
 const snapshot = (storage: StorageAccess) => keys.map(key => storage.getItem(key))
@@ -34,19 +36,20 @@ export function demandErrors(demands: SpecialDemand[], from: string, to: string,
   if (demands.some((a, i) => demands.some((b, j) => j > i && a.date === b.date && a.groupId === b.groupId && a.start < b.end && b.start < a.end))) errors.push('Sonderbedarfe derselben Gruppe dürfen sich zeitlich nicht überschneiden.')
   return [...new Set(errors)]
 }
-export function proposalIssues(context: GeneratorContext, proposal: Proposal, options: CheckOptions = {}) {
+export function proposalIssues(context: GeneratorContext, proposal: Proposal, options: CheckOptions = context.setup?.planningRules ?? {}) {
   return checkPlan({ from: proposal.from, to: proposal.to, setup: context.setup, employees: context.employees, absences: context.absences, inspection: { entries: [...context.shifts, ...proposal.shifts] }, options, specialDemands: proposal.demands })
 }
 export function proposalCoverage(context: GeneratorContext, proposal: Proposal) {
   return calendarWeek(proposal.from).days.flatMap(date => criticalWindows(calculateStaffing(date, context.setup, [...context.shifts, ...proposal.shifts], context.absences, context.employees, false, proposal.demands).windows).filter(window => ['under', 'check', 'unconfigured'].includes(window.status)).map(window => ({ ...window, date })))
 }
-// Greedy, chronological, stable ID tie-break. Continue adjacent assignments before balancing weekly ratios.
+// Existing chronological heuristic; eligible candidates are ranked by wishes and proportional duty/weekly load.
 export function generateProposal(context: GeneratorContext, date: string, demands: SpecialDemand[] = []): Proposal {
   const week = calendarWeek(date)
   const proposal: Proposal = { from: week.monday, to: week.days[6], shifts: [], demands: demands.map(demand => ({ ...demand })), reasons: [] }
   const reasons = new Set<string>(demandErrors(demands, proposal.from, proposal.to, context.setup))
   if (reasons.size || !context.setup?.completed) { reasons.add('Ohne vollständige Einrichtung bzw. gültigen Sonderbedarf werden keine Schichten erfunden.'); proposal.reasons = [...reasons]; return proposal }
   const setup = context.setup
+  const explanations = new Map<string, string>()
   const combined = () => [...context.shifts, ...proposal.shifts]
   const weekly = (id: string) => workTime(combined().filter(shift => shift.employeeId === id && shift.date >= proposal.from && shift.date <= proposal.to)).net
   for (const day of week.days) {
@@ -58,9 +61,10 @@ export function generateProposal(context: GeneratorContext, date: string, demand
     for (const window of staffing.windows) {
       if (window.status === 'check') { reasons.add(`${day}: ${window.name} bleibt wegen unklarer Anwesenheit/Pausenlage manuell zu prüfen.`); continue }
       if (window.status !== 'under' || window.required === null) continue
-      const ticks = [...new Set([window.start, window.end, ...context.employees.flatMap(person => [minute(person.availability.start), minute(person.availability.end)]).filter(point => point > window.start && point < window.end)])].sort((a, b) => a - b)
+      const ticks = [...new Set([window.start, window.end, ...context.employees.flatMap(person => [minute(person.availability.start), minute(person.availability.end), ...(person.preferences?.preferredHours ? [minute(person.preferences.preferredHours.start), minute(person.preferences.preferredHours.end)] : [])]).filter(point => point > window.start && point < window.end)])].sort((a, b) => a - b)
       for (let index = 0; index < ticks.length - 1; index++) {
         const start = ticks[index], end = ticks[index + 1]
+        const kind: DutyKind = weekend ? 'weekend' : window.area === 'early' ? 'early' : window.area === 'late' ? 'late' : 'core'
         for (let missing = window.required - window.actual; missing > 0; missing--) {
           const candidates = context.employees.filter(person => {
             if (!setup.groups.some(group => group.id === person.groupId) || !Number.isSafeInteger(person.weeklyMinutes) || person.weeklyMinutes <= 0) return false
@@ -71,13 +75,17 @@ export function generateProposal(context: GeneratorContext, date: string, demand
             if (person.fixedTimes[weekday as Weekday]) { reasons.add(`${day}: Verbindliche feste Tageszeiten von ${person.name} müssen manuell als Ganzes eingeplant werden.`); return false }
             if (person.rules.some(rule => rule.type === 'must' && (rule.weekday === null || rule.weekday === weekday))) { reasons.add(`${day}: Muss-Freitextregel von ${person.name} ist nicht automatisch auswertbar.`); return false }
             if (weekly(person.id) + end - start > person.weeklyMinutes) return false
+            if (!respectsLimits(person.id, day, start, end, combined(), setup.planningRules)) { reasons.add(`${day}: Gespeicherte Dienstdauer-/Ruhegrenzen begrenzen die Zuweisung für ${person.name}.`); return false }
             return !overlappingShifts({ id: '', employeeId: person.id, groupId: person.groupId, date: day, start: formatMinutes(start), end: formatMinutes(end) }, combined()).length
-          }).sort((a, b) => {
-            const continuing = (id: string) => proposal.shifts.some(shift => shift.employeeId === id && shift.date === day && shift.end === formatMinutes(start)) ? 0 : 1
-            return continuing(a.id) - continuing(b.id) || weekly(a.id) / a.weeklyMinutes - weekly(b.id) / b.weeklyMinutes || a.id.localeCompare(b.id)
-          })
+          }).sort((a, b) => compareRanks(candidateRank(a, kind, day, start, end, combined(), setup, proposal.from, proposal.to), candidateRank(b, kind, day, start, end, combined(), setup, proposal.from, proposal.to)) || a.id.localeCompare(b.id))
           const person = candidates[0]
           if (!person) { reasons.add(`${day}: ${window.name} kann mit Gruppen, Verfügbarkeiten und verbleibenden Vertragsstunden nicht vollständig besetzt werden.`); break }
+          const traceKey = `${day}:${person.id}:${kind}`
+          if (!explanations.has(traceKey)) {
+            const load = dutyCounts(person.id, combined(), setup, proposal.from, proposal.to)
+            explanations.set(traceKey, `${day} · ${person.name} · ${kind === 'early' ? 'Früh' : kind === 'late' ? 'Spät' : kind === 'weekend' ? 'Wochenende' : 'Kernzeit'}: unter den geeigneten Mitarbeitenden nach Wunschpassung, fortlaufendem Dienst und auf Vertragsstunden normierter Dienst-/Stundenlast gewählt (zuvor Früh ${load.early}, Spät ${load.late}, Wochenende ${load.weekend}; ${formatMinutes(weekly(person.id))} / ${formatMinutes(person.weeklyMinutes)}). Harte Regeln sind vorab geprüft; Gleichstände entscheidet die stabile Personen-ID.`)
+          }
+          wishMisses(person, day, formatMinutes(start), formatMinutes(end)).forEach(reason => reasons.add(`${day} · ${person.name}: ${reason}; unter den verbleibenden geeigneten Personen nicht vermeidbar.`))
           const groupId = window.area.startsWith('group:') ? window.area.slice(6) : person.groupId
           const previous = proposal.shifts.find(shift => shift.employeeId === person.id && shift.groupId === groupId && shift.date === day && shift.end === formatMinutes(start))
           if (previous) previous.end = formatMinutes(end)
@@ -92,6 +100,7 @@ export function generateProposal(context: GeneratorContext, date: string, demand
     }
   }
   proposal.reasons = [...reasons]
+  proposal.explanations = [...explanations.values()]
   return proposal
 }
 export function adoptProposal(storage: StorageAccess, draft: Draft, options: CheckOptions = {}, confirmed = false): number {
@@ -104,7 +113,7 @@ export function adoptProposal(storage: StorageAccess, draft: Draft, options: Che
   for (const shift of proposal.shifts) {
     if (validateShift(shift).length || shift.date < proposal.from || shift.date > proposal.to || !current.employees.some(person => person.id === shift.employeeId) || !current.setup?.groups.some(group => group.id === shift.groupId)) throw Error('Vorgeschlagene Schichtdaten sind ungültig oder liegen außerhalb der gewählten Woche.')
   }
-  if (proposalIssues(current, proposal, options).some(issue => issue.kind === 'conflict')) throw Error('Harte Konflikte verhindern die Übernahme. Bitte Vorschau und Prüfmeldungen korrigieren.')
+  if (proposalIssues(current, proposal, { ...options, ...current.setup?.planningRules }).some(issue => issue.kind === 'conflict')) throw Error('Harte Konflikte verhindern die Übernahme. Bitte Vorschau und Prüfmeldungen korrigieren.')
   // One atomic localStorage operation, never saveShift in a loop. Failures preserve the old value.
   if (JSON.stringify(snapshot(storage)) !== JSON.stringify(draft.context.snapshot)) throw Error('Speicherstand geändert. Bitte Vorschlag neu erstellen.')
   storage.setItem(SHIFTS_KEY, JSON.stringify({ version: 1, shifts: [...current.shifts, ...proposal.shifts] }))

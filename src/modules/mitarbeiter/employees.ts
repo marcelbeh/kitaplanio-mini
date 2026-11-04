@@ -5,6 +5,9 @@ export const DAYS = [
   { id: 'wed', label: 'Mittwoch' }, { id: 'thu', label: 'Donnerstag' }, { id: 'fri', label: 'Freitag' },
 ] as const
 export type Weekday = typeof DAYS[number]['id']
+export const PLANNING_DAYS = [...DAYS, { id: 'sat', label: 'Samstag' }, { id: 'sun', label: 'Sonntag' }] as const
+export type PlanningDay = typeof PLANNING_DAYS[number]['id']
+export type Preferences = { preferredDaysOff?: PlanningDay[]; preferredHours?: TimeRange }
 export type PlanningRule = { id: string; description: string; type: 'must' | 'wish'; weekday: Weekday | null }
 export type Employee = {
   id: string
@@ -17,6 +20,7 @@ export type Employee = {
   // These times are binding; breaks within them will be deducted by a future planner.
   fixedTimes: Partial<Record<Weekday, TimeRange>>
   rules: PlanningRule[]
+  preferences?: Preferences
 }
 export type EmployeeStore = { version: 1; employees: Employee[] }
 export type GroupReference = { id: string; name: string }
@@ -42,6 +46,7 @@ function isDay(day: unknown): day is Weekday { return DAYS.some(item => item.id 
 
 export function validateEmployee(employee: Employee, groups?: GroupReference[]): string[] {
   const errors: string[] = []
+  if (employee.preferences && (!preferencesShape(employee.preferences) || employee.preferences.preferredHours && !validRange(employee.preferences.preferredHours))) errors.push('Bitte gültige Wunschzeiten und eindeutige bevorzugte freie Tage auswählen.')
   if (!employee.id.trim()) errors.push('Die Mitarbeiter-ID fehlt.')
   if (!employee.name.trim()) errors.push('Bitte einen Namen eingeben.')
   if (!employee.qualification.trim()) errors.push('Bitte eine Qualifikation eingeben.')
@@ -73,8 +78,12 @@ export function validateEmployee(employee: Employee, groups?: GroupReference[]):
 
 function record(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value) }
 function range(value: unknown): value is TimeRange { return record(value) && typeof value.start === 'string' && typeof value.end === 'string' }
+function preferencesShape(value: unknown): value is Preferences {
+  return record(value) && (value.preferredDaysOff === undefined || Array.isArray(value.preferredDaysOff) && value.preferredDaysOff.every(day => PLANNING_DAYS.some(item => item.id === day)) && new Set(value.preferredDaysOff).size === value.preferredDaysOff.length) && (value.preferredHours === undefined || range(value.preferredHours))
+}
 export function employeeShape(value: unknown): value is Employee {
   if (!record(value) || !['id', 'name', 'groupId', 'qualification'].every(key => typeof value[key] === 'string') || typeof value.weeklyMinutes !== 'number' || !Array.isArray(value.workdays) || !value.workdays.every(isDay) || !range(value.availability) || !record(value.fixedTimes) || !Object.values(value.fixedTimes).every(range) || !Array.isArray(value.rules)) return false
+  if (value.preferences !== undefined && !preferencesShape(value.preferences)) return false
   return value.rules.every(rule => record(rule) && typeof rule.id === 'string' && typeof rule.description === 'string' && (rule.type === 'must' || rule.type === 'wish') && (rule.weekday === null || isDay(rule.weekday)))
 }
 export function loadEmployees(storage: StorageAccess): EmployeeStore {

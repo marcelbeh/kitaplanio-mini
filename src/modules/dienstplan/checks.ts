@@ -1,12 +1,13 @@
-import type { StorageAccess, KitaSetup } from '../kita/setup'
+import type { StorageAccess, KitaSetup, PlanningLimits } from '../kita/setup'
 import type { Employee, Weekday } from '../mitarbeiter/employees'
 import type { Absence } from '../abwesenheiten/absences'
 import type { Shift } from './schedule'
 import { SHIFTS_KEY, addDays, formatMinutes, validDate, validateShift, workTime } from './schedule'
+import { wishMisses } from './fairness'
 import type { SpecialDemand } from './staffing'
 import { calculateStaffing, criticalWindows } from './staffing'
 
-export type CheckOptions = { maxShiftMinutes?: number; minRestMinutes?: number }
+export type CheckOptions = PlanningLimits
 export type PlanIssue = { id: string; kind: 'conflict' | 'hint'; date: string; person: string; cause: string; correction: string }
 export type ShiftInspection = { entries: unknown[]; problem?: string }
 export function inspectStoredShifts(storage: Pick<StorageAccess, 'getItem'>): ShiftInspection {
@@ -28,7 +29,7 @@ function shape(value: unknown): value is Shift {
   return ['id', 'employeeId', 'groupId', 'date', 'start', 'end'].every(key => typeof record[key] === 'string') && (record.breakMinutes === undefined || typeof record.breakMinutes === 'number') && (record.employeeName === undefined || typeof record.employeeName === 'string')
 }
 export function checkPlan(input: { from: string; to: string; setup: KitaSetup | null; employees: Employee[]; absences: Absence[]; inspection: ShiftInspection; errors?: string[]; options?: CheckOptions; specialDemands?: SpecialDemand[] }): PlanIssue[] {
-  const { from, to, setup, employees, absences, inspection, options = {} } = input
+  const { from, to, setup, employees, absences, inspection, options = input.setup?.planningRules ?? {} } = input
   const issues = new Map<string, PlanIssue>()
   const add = (id: string, kind: PlanIssue['kind'], date: string, person: string, cause: string, correction: string) => issues.set(id, { id, kind, date, person, cause, correction })
   const name = (shift: Shift) => employees.find(person => person.id === shift.employeeId)?.name ?? shift.employeeName ?? `Person ${shift.employeeId}`
@@ -61,6 +62,12 @@ export function checkPlan(input: { from: string; to: string; setup: KitaSetup | 
     if ((shift.breakMinutes ?? 0) > 0) add(`pause:${shift.id}`, 'hint', shift.date, name(shift), `${formatMinutes(shift.breakMinutes!)} Pause ohne zeitliche Zuordnung (${shift.start}–${shift.end}).`, 'Pausenlage im Team abstimmen; Nettozeit ist berechnet, Intervallbesetzung bleibt ungeklärt.')
     if (positive(options.maxShiftMinutes) && minute(shift.end) - minute(shift.start) > options.maxShiftMinutes!) add(`long:${shift.id}`, 'hint', shift.date, name(shift), `Bruttodienst ${formatMinutes(minute(shift.end) - minute(shift.start))} überschreitet die gewählte Grenze ${formatMinutes(options.maxShiftMinutes!)}.`, 'Dienstdauer prüfen. Dies ist ein frei gewählter Hinweis, keine rechtliche Bewertung.')
     if (!person) continue
+    const wishes = wishMisses(person, shift.date, shift.start, shift.end)
+    if (wishes.length) {
+      const id = `wish:${person.id}:${shift.date}`
+      const cause = [...new Set([...(issues.get(id)?.cause.split('; ') ?? []), ...wishes])].join('; ')
+      add(id, 'hint', shift.date, person.name, cause, 'Wunsch und Bedarf abgleichen. Wünsche heben harte Regeln nicht auf.')
+    }
     const weekday = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date(`${shift.date}T00:00:00Z`).getUTCDay()]
     const fixed = person.fixedTimes[weekday as Weekday]
     if (!fixed && (shift.start < person.availability.start || shift.end > person.availability.end)) add(`availability:${shift.id}`, 'conflict', shift.date, person.name, `Schicht ${shift.start}–${shift.end} außerhalb des hinterlegten Arbeitsrahmens ${person.availability.start}–${person.availability.end}.`, 'Schichtzeiten oder ausdrücklich hinterlegte Verfügbarkeit prüfen.')

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { loadSetup } from '../kita/setup'
+import { loadSetup, savePlanningLimits } from '../kita/setup'
 import { loadEmployees } from '../mitarbeiter/employees'
 import { ABSENCE_TYPES, PORTIONS, loadAbsences } from '../abwesenheiten/absences'
 import { EVENT_TYPES, listOccurrences, loadEvents } from '../termine/events'
@@ -40,8 +40,9 @@ export function SchedulePage() {
   const [dateError, setDateError] = useState('')
   const [editor, setEditor] = useState<{ value: Shift; mode: 'create' | 'update' } | null>(null)
   const [notice, setNotice] = useState('')
-  const [checkOptions, setCheckOptions] = useState<CheckOptions>({})
+  const [checkOptions, setCheckOptions] = useState<CheckOptions>(() => storedData.setup?.planningRules ?? {})
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [rulesMessage, setRulesMessage] = useState('')
   const [generatorError, setGeneratorError] = useState('')
   const data = draft ? { ...draft.context, groups: draft.context.setup?.groups ?? [], errors: [] as string[], shifts: [...draft.context.shifts, ...draft.proposal.shifts], inspection: { entries: [...draft.context.shifts, ...draft.proposal.shifts] } } : storedData
   useEffect(() => {
@@ -51,6 +52,7 @@ export function SchedulePage() {
     window.addEventListener('focus', reload)
     return () => { window.clearInterval(timer); window.removeEventListener('storage', reload); window.removeEventListener('focus', reload) }
   }, [])
+  useEffect(() => { if (!draft) setCheckOptions(storedData.setup?.planningRules ?? {}) }, [storedData, draft])
   const week = calendarWeek(selected)
   const issues = checkPlan({ from: week.monday, to: week.days[6], setup: data.setup, employees: data.employees, absences: data.absences, inspection: data.inspection, errors: data.errors, options: checkOptions, specialDemands: draft?.proposal.demands })
   const people = schedulePeople(data.employees, data.shifts, data.absences, week.monday, week.days[6])
@@ -117,14 +119,17 @@ export function SchedulePage() {
       {dateError && <p className="kita-errors" role="alert">{dateError}</p>}
     </section>
     <GeneratorPanel draft={draft} setup={data.setup} dates={week.days} issues={issues} error={generatorError} onGenerate={demands => {
-      try { const context = readGeneratorContext(window.localStorage); setDraft({ context, proposal: generateProposal(context, selected, demands) }); setGeneratorError(''); setNotice('') }
+      try { const context = readGeneratorContext(window.localStorage); setCheckOptions(context.setup?.planningRules ?? {}); setDraft({ context, proposal: generateProposal(context, selected, demands) }); setGeneratorError(''); setNotice('') }
       catch (error) { setGeneratorError((error as Error).message) }
     }} onDiscard={() => { setDraft(null); setData(readSchedule()); setGeneratorError(''); setNotice('Vorschau verworfen. Es wurden keine Schichten gespeichert.') }} onAdopt={() => {
       if (!draft) return
       try { const count = adoptProposal(window.localStorage, draft, checkOptions, true); setDraft(null); setData(readSchedule()); setGeneratorError(''); setNotice(`${count} neue Schichten übernommen.`) }
       catch (error) { setGeneratorError((error as Error).message) }
     }} />
-    <PlanChecks issues={issues} options={checkOptions} onOptions={setCheckOptions} onSelect={date => {
+    <PlanChecks issues={issues} options={checkOptions} onOptions={value => { setCheckOptions(value); setRulesMessage('Noch nicht gespeichert.') }} limitsLocked={!!draft} rulesMessage={rulesMessage} onSaveOptions={() => {
+      try { savePlanningLimits(window.localStorage, checkOptions); setData(readSchedule()); setRulesMessage('Grenzen lokal gespeichert. Leere Grenzen bleiben deaktiviert.') }
+      catch (error) { setRulesMessage((error as Error).message) }
+    }} onSelect={date => {
       select(date)
       window.requestAnimationFrame(() => {
         const target = document.getElementById(window.matchMedia('(max-width: 760px)').matches ? 'schedule-day-heading' : `schedule-date-${date}`)

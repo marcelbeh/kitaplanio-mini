@@ -1,12 +1,14 @@
 export type TimeRange = { start: string; end: string }
 export type StaffingPeriod = TimeRange & { minimum: number }
 export type KitaGroup = { id: string; name: string; periods: StaffingPeriod[] }
+export type PlanningLimits = { maxShiftMinutes?: number; minRestMinutes?: number }
 export type KitaSetup = {
   version: 1
   completed: boolean
   name?: string
   careDays?: ('mon' | 'tue' | 'wed' | 'thu' | 'fri')[]
   pauseNotes?: string
+  planningRules?: PlanningLimits
   opening: TimeRange
   early: StaffingPeriod
   late: StaffingPeriod
@@ -91,6 +93,7 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
 function isRange(value: unknown): value is TimeRange { return isRecord(value) && typeof value.start === 'string' && typeof value.end === 'string' }
 function isPeriod(value: unknown): value is StaffingPeriod { return isRange(value) && 'minimum' in value && typeof value.minimum === 'number' && Number.isFinite(value.minimum) }
 function isSetup(value: unknown): value is KitaSetup {
+  if (isRecord(value) && value.planningRules !== undefined && !validPlanningLimits(value.planningRules)) return false
   if (!isRecord(value) || value.version !== 1 || typeof value.completed !== 'boolean' || !isRange(value.opening) || !isPeriod(value.early) || !isPeriod(value.late) || !Array.isArray(value.groups) || !value.groups.length || value.groups.length > MAX_GROUPS) return false
   if ((value.name !== undefined && typeof value.name !== 'string') || (value.pauseNotes !== undefined && typeof value.pauseNotes !== 'string') || (value.careDays !== undefined && (!Array.isArray(value.careDays) || !value.careDays.every(day => typeof day === 'string')))) return false
   return value.groups.every(group => isRecord(group) && typeof group.id === 'string' && typeof group.name === 'string' && Array.isArray(group.periods) && group.periods.every(isPeriod)) && new Set(value.groups.map(group => group.id)).size === value.groups.length
@@ -117,4 +120,16 @@ export function saveSetup(storage: StorageAccess, setup: KitaSetup, previous: Ki
   const normalized = { ...setup, groups: setup.groups.map(group => ({ ...group, name: group.name.trim() })) }
   storage.setItem(STORAGE_KEY, JSON.stringify(normalized))
   return normalized
+}
+
+export function validPlanningLimits(value: unknown): value is PlanningLimits {
+  return isRecord(value) && !Array.isArray(value) && ['maxShiftMinutes', 'minRestMinutes'].every(key => value[key] === undefined || Number.isSafeInteger(value[key]) && Number(value[key]) > 0)
+}
+export function savePlanningLimits(storage: StorageAccess, rules: PlanningLimits): KitaSetup {
+  if (!validPlanningLimits(rules)) throw Error('Bitte positive ganze Minuten eingeben oder die Grenze leer lassen.')
+  const current = loadSetup(storage)
+  if (!current) throw Error('Bitte zuerst die Kita einrichten. Es wurden keine Standardwerte angelegt.')
+  const next = { ...current, planningRules: { maxShiftMinutes: rules.maxShiftMinutes, minRestMinutes: rules.minRestMinutes } }
+  storage.setItem(STORAGE_KEY, JSON.stringify(next))
+  return next
 }

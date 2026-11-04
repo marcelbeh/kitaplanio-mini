@@ -1,3 +1,5 @@
+import { buildDemo, demoAvailability, loadDemo } from './demo'
+import { calendarWeek, dateLabel, localDate } from '../dienstplan/schedule'
 import { useState } from 'react'
 import { AREAS } from '../../cloud/dataset'
 import { ACTIVE_KEY, WORKSPACE_EVENT } from '../../cloud/workspace'
@@ -7,10 +9,14 @@ import type { ResetBackup } from './reset'
 export function SettingsPage() {
   const [backup, setBackup] = useState<ResetBackup | null>(null), [proof, setProof] = useState<ResetBackup | null>(null)
   const [downloaded, setDownloaded] = useState(false), [phrase, setPhrase] = useState(''), [message, setMessage] = useState('')
+  const [demoOpen, setDemoOpen] = useState(false), [demoDate, setDemoDate] = useState(localDate)
+  let demoError = ''
+  try { demoAvailability(window.localStorage) } catch (error) { demoError = (error as Error).message }
+  const demoWeek = calendarWeek(demoDate)
   let blocked = true, storageError = false
   try { blocked = window.localStorage.getItem(ACTIVE_KEY) !== null } catch { storageError = true }
   function prepare() {
-    setProof(null); setPhrase(''); setDownloaded(false); setMessage(''); setBackup(null)
+    setDemoOpen(false); setProof(null); setPhrase(''); setDownloaded(false); setMessage(''); setBackup(null)
     try { setBackup(prepareReset(window.localStorage)) } catch (error) { setMessage((error as Error).message) }
   }
   function download() {
@@ -47,6 +53,22 @@ export function SettingsPage() {
               window.location.hash = '#kita'; window.dispatchEvent(new Event(WORKSPACE_EVENT))
             } catch (error) { setMessage((error as Error).message); setProof(null); setPhrase('') }
           }}>Lokale Daten endgültig zurücksetzen</button><button className="kita-button secondary" onClick={() => { setBackup(null); setProof(null); setPhrase(''); setMessage('Reset abgebrochen. Keine Daten geändert.') }}>Abbrechen</button></div>
+        </div>}
+      </div>
+      <div className="kita-card"><h3>DEMO · Kita zum Ausprobieren</h3>
+        <p>11 fiktive Mitarbeitende: Nest (3), Sonne (4), Sterne (4). Montag bis Freitag 07:00–16:00 Uhr, mit unterschiedlichen Wochenstunden, Pausen, Abwesenheiten und Sonderterminen. Keine reguläre Wochenendbetreuung; ein Sonntags-Gottesdienst bleibt ein Sondertermin ohne automatisch geplante Schichten.</p>
+        <p>Nur für einen nachweislich leeren lokalen Bestand. Keine Cloud-Übertragung. Die Demo lässt sich über den lokalen Reset vollständig entfernen.</p>
+        {demoError && <p className="kita-help">{demoError}</p>}
+        <button className="kita-button secondary" disabled={!!demoError} onClick={() => {
+          try { demoAvailability(window.localStorage); const date = localDate(); buildDemo(date); setDemoDate(date); setDemoOpen(true); setBackup(null); setProof(null); setMessage('') }
+          catch (error) { setMessage((error as Error).message) }
+        }}>Demo-Kita laden</button>
+        {demoOpen && <div role="group" aria-label="Demo-Kita bestätigen">
+          <p>DEMO für KW {demoWeek.week}/{demoWeek.year}: {dateLabel(demoWeek.monday)}–{dateLabel(demoWeek.days[4])}. Kirchlicher Sondertermin am {dateLabel(demoWeek.days[6])}. Alle Personen und Sollwerte sind fiktiv; Pausenlage und halbtägige Abwesenheit bleiben sichtbar ungeklärt. Abwesenheiten erzeugen bewusst Prüfhinweise und mögliche Bedarfslücken.</p>
+          <div className="kita-actions"><button className="kita-button" disabled={!!demoError} onClick={() => {
+            try { loadDemo(window.localStorage, demoDate, true); window.location.hash = '#dienstplan'; window.dispatchEvent(new Event(WORKSPACE_EVENT)) }
+            catch (error) { setMessage((error as Error).message); setDemoOpen(false) }
+          }}>DEMO ausdrücklich lokal laden</button><button className="kita-button secondary" onClick={() => setDemoOpen(false)}>Abbrechen</button></div>
         </div>}
       </div>
     </section>

@@ -1,0 +1,38 @@
+.team-plan { display: none; }
+.team-plan-preview { display: block; max-width: 100%; margin: 24px 0; overflow-wrap: anywhere; overflow-x: auto; }
+.team-plan-preview table { min-width: 900px; }
+.team-plan header p { margin-bottom: 8px; }
+.team-brand { color: var(--aubergine); font-size: 24px; }
+.team-brand span { font-size: 12px; font-weight: 400; }
+.team-plan table { border-collapse: collapse; table-layout: fixed; width: 100%; font-size: 11px; }
+.team-plan th, .team-plan td { padding: 8px; border: 1px solid var(--border); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.team-plan th:first-child { width: 16%; }
+.team-plan thead { background: var(--lilac-soft); }
+.team-plan td > span, .team-plan td > strong, .team-plan small { display: block; }
+.team-day-total { margin-top: 6px; font-weight: 600; }
+.team-footnote { font-size: 10px; margin-top: 12px; }
+.publication-panel select { max-width: 100%; }
+.publication-confirm { border: 1px solid var(--lilac); padding: 16px; border-radius: var(--radius-sm); background: var(--lilac-soft); margin-top: 16px; }
+@page { size: A4 landscape; margin: 10mm; }
+@media print {
+  html, body { min-width: 0 !important; background: white !important; color: #28182C; font-size: 9pt; }
+  .sidebar, .topbar, .bottom-nav, .mobile-more, .skip-link, footer { display: none !important; }
+  .app-shell { min-height: 0; }
+  .workspace { display: block; margin: 0; min-height: 0; }
+  main { display: block; width: 100%; max-width: none; padding: 0; margin: 0; }
+  .schedule-page { max-width: none; width: 100%; }
+  .schedule-page > :not(.team-plan) { display: none !important; }
+  .team-plan { display: block !important; width: 100%; margin: 0; overflow: visible; }
+  .team-plan h2 { font-size: 15pt; margin: 6pt 0; }
+  .team-plan p { font-size: 9pt; }
+  .team-brand { font-size: 16pt; }
+  .team-version { font-weight: bold; }
+  .team-plan table { width: 100%; min-width: 0; font-size: 8pt; }
+  .team-plan th, .team-plan td { border-color: #A79AA8; padding: 5pt; line-height: 1.4; }
+  .team-plan thead { display: table-header-group; background: #F1EAF8; }
+  .team-plan tr { break-inside: avoid; page-break-inside: avoid; }
+  .team-plan th { position: static; }
+  .team-plan small { font-size: 7pt; }
+  .team-plan header { break-inside: avoid; }
+  .team-plan button, .team-plan input, .team-plan select { display: none !important; }
+}

@@ -24,8 +24,11 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - run: node --test tests/events.test.mjs tests/schedule.test.mjs tests/staffing.test.mjs tests/checks.test.mjs tests/generator.test.mjs tests/fairness.test.mjs tests/publications.test.mjs
+      - run: node --test tests/events.test.mjs tests/schedule.test.mjs tests/staffing.test.mjs tests/checks.test.mjs tests/generator.test.mjs tests/fairness.test.mjs tests/publications.test.mjs tests/cloud.test.mjs
       - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: dist

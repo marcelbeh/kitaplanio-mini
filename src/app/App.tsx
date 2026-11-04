@@ -1,3 +1,4 @@
+import { CloudAccount } from '../cloud/CloudAccount'
 import { useEffect, useRef, useState } from 'react'
 import { modules } from '../modules'
 import { KitaPage } from '../modules/kita/KitaPage'
@@ -60,7 +61,7 @@ export function App() {
       <div className="sidebar-bottom"><span className="sidebar-flourish" aria-hidden="true">caro.</span><p>Mit Herz geplant.</p></div>
     </aside>
     <div className="workspace">
-      <header className="topbar"><a className="mobile-brand" href="#dashboard" aria-label="caro. – Start"><img src="./brand/logo-light.svg" width="165" height="53" alt="caro." /></a><div className="breadcrumb"><span>caro.</span><span aria-hidden="true">/</span><strong>{active.title}</strong></div><span className="profile-chip"><span className="profile-avatar" aria-hidden="true">C</span><span>Caro<small>Dein persönlicher Planungsraum</small></span></span></header>
+      <header className="topbar"><a className="mobile-brand" href="#dashboard" aria-label="caro. – Start"><img src="./brand/logo-light.svg" width="165" height="53" alt="caro." /></a><div className="breadcrumb"><span>caro.</span><span aria-hidden="true">/</span><strong>{active.title}</strong></div><CloudAccount /></header>
       <main id="main-content" tabIndex={-1}>
         {active.id === 'dashboard' ? <DashboardPage /> : active.id === 'kita' ? <KitaPage /> : active.id === 'mitarbeiter' ? <EmployeesPage /> : active.id === 'abwesenheiten' ? <AbsencesPage /> : active.id === 'termine' ? <EventsPage /> : active.id === 'dienstplan' ? <SchedulePage /> : <PlaceholderPage title={active.title} description={active.description} />}
       </main>

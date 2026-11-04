@@ -1,6 +1,8 @@
 # KitaPlanio Lite
 
-Eigenständige private PWA auf Basis von React, TypeScript und Vite. P1 liefert die responsive Grundoberfläche. P2 ergänzt im Bereich „Kita“ einen geführten Einrichtungsassistenten, P3 die Mitarbeiterverwaltung mit Arbeitsregeln. Die übrigen Bereiche bleiben Platzhalter. Keine Datenbank, Authentifizierung oder Planungslogik.
+
+P8a: optionale private Supabase-Anmeldung und RLS-Grundlage, weiterhin ohne Datensynchronisierung. Einrichtung und offene Dashboard-Schritte: [docs/supabase.md](docs/supabase.md).
+Eigenständige private PWA auf Basis von React, TypeScript und Vite. P1 liefert die responsive Grundoberfläche. P2 ergänzt im Bereich „Kita“ einen geführten Einrichtungsassistenten, P3 die Mitarbeiterverwaltung mit Arbeitsregeln. Die folgenden Abschnitte dokumentieren die einzelnen lokalen Ausbaustufen.
 
 ## Lokal starten
 

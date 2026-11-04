@@ -17,7 +17,7 @@ Deno.serve(createAssistantHandler({
     })
     return authorizeMember({
       getUser: jwt => client.auth.getUser(jwt),
-      getMember: userId => client.from('caro_members').select('user_id').eq('user_id', userId).eq('enabled', true).maybeSingle(),
+      getMember: userId => client.from('caro_members').select('user_id, enabled').eq('user_id', userId).eq('enabled', true).maybeSingle(),
     }, token)
   },
 }))

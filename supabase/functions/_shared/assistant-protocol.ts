@@ -43,6 +43,16 @@ export type AiRequest = {
 }
 export type AiAnswer = { summary: string; warnings: string[]; shifts: { person: string; group: string; date: string; start: string; end: string; reason: string }[] }
 export const answerSchema = object({ summary: str(2000), warnings: array(str(300), 12), shifts: array(object({ person: personId, group: groupId, date, start: time, end: time, reason: str(240) }), 160) })
+// Constrain the provider to this request's IDs/dates; local validation remains stricter than decoding.
+export function answerSchemaFor(request: AiRequest): Schema {
+  const dates: string[] = []
+  for (let stamp = Date.parse(request.from); stamp <= Date.parse(request.to); stamp += 86400000) {
+    const day = new Date(stamp)
+    if (![0, 6].includes(day.getUTCDay())) dates.push(day.toISOString().slice(0, 10))
+  }
+  const shifts = answerSchema.properties!.shifts
+  return { ...answerSchema, properties: { ...answerSchema.properties, shifts: { ...shifts, maxItems: request.task === 'plan' ? 160 : 0, items: { ...shifts.items!, properties: { ...shifts.items!.properties, person: enumeration(request.people.map(person => person.id)), group: enumeration(request.groups.map(group => group.id)), date: enumeration(dates) } } } } }
+}
 export const MAX_INPUT_BYTES = 256000, MAX_OUTPUT_BYTES = 64000
 function matches(value: unknown, schema: Schema): boolean {
   if (schema.anyOf) return schema.anyOf.some(item => matches(value, item))

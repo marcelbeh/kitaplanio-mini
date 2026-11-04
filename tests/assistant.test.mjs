@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { build } from 'esbuild'
-const result = await build({ stdin: { contents: `export * from './src/modules/ki-assistent/assistant.ts'; export * from './supabase/functions/_shared/assistant-protocol.ts'; export * from './supabase/functions/caro-assistant/handler.ts'; export * from './supabase/functions/caro-assistant/authorize.ts'; export { teamPlan } from './src/modules/dienstplan/publications.ts';`, resolveDir: process.cwd() }, bundle: true, write: false, platform: 'node', format: 'esm' })
-const { prepareAiSession, aiPreview, adoptAi, parseRequest, parseAnswer, createAssistantHandler, authorizeMember, teamPlan, localAnswerText, MAX_INPUT_BYTES } = await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`)
+const result = await build({ stdin: { contents: `export * from './src/modules/ki-assistent/assistant.ts'; export * from './supabase/functions/_shared/assistant-protocol.ts'; export * from './supabase/functions/caro-assistant/handler.ts'; export * from './supabase/functions/caro-assistant/authorize.ts'; export { createAppStorage } from './src/cloud/workspace.ts'; export { AREAS } from './src/cloud/dataset.ts'; export { teamPlan } from './src/modules/dienstplan/publications.ts';`, resolveDir: process.cwd() }, bundle: true, write: false, platform: 'node', format: 'esm' })
+const { prepareAiSession, aiPreview, adoptAi, parseRequest, parseAnswer, createAssistantHandler, authorizeMember, teamPlan, localAnswerText, MAX_INPUT_BYTES, answerSchemaFor, aiTimeSummary, createAppStorage, AREAS } = await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`)
 const date = '2027-01-04', shiftsKey = 'kitaplanio-lite:shifts:v1', publicationKey = 'caro:published-weeks:v1'
 const setup = { version: 1, completed: true, name: 'Geheime Kita', careDays: ['mon'], opening: { start: '07:00', end: '10:00' }, early: { start: '07:00', end: '08:00', minimum: 1 }, late: { start: '09:00', end: '10:00', minimum: 1 }, groups: [{ id: 'private-group', name: 'Geheime Gruppe', periods: [{ start: '08:00', end: '09:00', minimum: 1 }] }], pauseNotes: 'Private Notiz' }
 const employee = { id: 'private-person', name: 'Private Person', groupId: 'private-group', qualification: 'private@example.org', weeklyMinutes: 600, workdays: ['mon'], availability: { start: '07:00', end: '18:00' }, fixedTimes: {}, rules: [], preferences: { preferredDaysOff: ['fri'], preferredHours: { start: '08:00', end: '15:00' } } }
@@ -113,15 +113,15 @@ test('Monatsanalyse verwendet bestehende Netto-/Dienstzählung und keine Einzelp
 
 test('Server-Autorisierung verifiziert JWT beim Auth-Server und prüft ausschließlich die eigene aktive caro_members-Zeile', async () => {
   const calls = []
-  function client(user, member = user?.id, error = null) {
-    const chain = { select: columns => { calls.push(['select', columns]); return chain }, eq: (key, value) => { calls.push(['eq', key, value]); return chain }, maybeSingle: async () => ({ data: member ? { user_id: member } : null, error }) }
+  function client(user, member = user?.id, error = null, enabled = true) {
+    const chain = { select: columns => { calls.push(['select', columns]); return chain }, eq: (key, value) => { calls.push(['eq', key, value]); return chain }, maybeSingle: async () => ({ data: member ? { user_id: member, enabled } : null, error }) }
     return { getUser: async jwt => { calls.push(['getUser', jwt]); return { data: { user }, error: null } }, getMember: async userId => { calls.push(['from', 'caro_members']); return chain.select('user_id').eq('user_id', userId).eq('enabled', true).maybeSingle() } }
   }
   assert.equal(await authorizeMember(client({ id: 'owner' }), token), 'owner')
   assert.ok(calls.some(call => call[0] === 'getUser' && call[1] === token))
   assert.ok(calls.some(call => call[0] === 'eq' && call[1] === 'user_id' && call[2] === 'owner'))
   assert.ok(calls.some(call => call[0] === 'eq' && call[1] === 'enabled' && call[2] === true))
-  for (const fake of [client(null), client({ id: 'owner', is_anonymous: true }), client({ id: 'owner' }, null), client({ id: 'owner' }, 'foreign'), client({ id: 'owner' }, 'owner', Error('rls'))]) assert.equal(await authorizeMember(fake, token), null)
+  for (const fake of [client(null), client({ id: 'owner', is_anonymous: true }), client({ id: 'owner' }, null), client({ id: 'owner' }, 'foreign'), client({ id: 'owner' }, 'owner', Error('rls')), client({ id: 'owner' }, 'owner', null, false)]) assert.equal(await authorizeMember(fake, token), null)
 })
 
 test('Edge verweigert nicht berechtigte Nutzer, fremden Origin und ungeeignete Eingaben ohne Gemini-Aufruf', async () => {
@@ -199,4 +199,138 @@ test('Oberfläche verlangt aktive Zustimmung; Offline-Klick startet weder Auth- 
     tree = render(); assert.ok(tree.some(node => node.props?.role === 'alert' && String(node.props.children).includes('offline')))
     assert.equal(harness.network, 0)
   } finally { globalThis.aiUi = prior; if (descriptor) Object.defineProperty(globalThis, 'navigator', descriptor); else delete globalThis.navigator }
+})
+
+test('CORS-Preflight erlaubt ausschließlich freigegebenen Origin, POST und SDK-Header; kein Auth-/Gemini-Aufruf', async () => {
+  let auth = 0, upstream = 0
+  const api = handler({ authorize: async () => { auth++; return 'owner' }, fetch: async () => { upstream++; return gemini() } })
+  const headers = { authorization: '', 'access-control-request-method': 'POST', 'access-control-request-headers': 'Authorization, Content-Type, apikey, X-Supabase-Api-Version' }
+  const good = await api(request(null, headers, 'OPTIONS'))
+  assert.equal(good.status, 204); assert.equal(good.headers.get('access-control-allow-origin'), 'https://marcelbeh.github.io')
+  assert.equal(good.headers.get('vary'), 'Origin')
+  assert.equal((await api(request(null, { ...headers, 'access-control-request-method': 'PUT' }, 'OPTIONS'))).status, 405)
+  assert.equal((await api(request(null, { ...headers, 'access-control-request-headers': 'X-Unapproved' }, 'OPTIONS'))).status, 403)
+  for (const origin of ['null', 'https://marcelbeh.github.io.evil.test', 'http://marcelbeh.github.io']) {
+    const denied = await api(request(null, { ...headers, origin }, 'OPTIONS'))
+    assert.equal(denied.status, 403); assert.equal(denied.headers.get('access-control-allow-origin'), null)
+  }
+  assert.equal(auth, 0); assert.equal(upstream, 0)
+})
+
+test('Mitgliedschaft wird nach Gemini erneut geprüft; deaktiviertes oder gewechseltes Konto erhält keine Antwortdaten', async () => {
+  for (const finalUser of [null, 'foreign']) {
+    let checks = 0
+    const api = handler({ authorize: async () => ++checks === 1 ? 'owner' : finalUser })
+    const response = await api(request(session().request))
+    assert.equal(response.status, 403); assert.equal(checks, 2)
+    const value = await response.json(); assert.equal(value.shifts, undefined); assert.equal(value.summary, undefined)
+  }
+})
+
+test('Gemini-JSON-Schema bindet IDs/Datumswerte an die Anfrage und verhindert Schichten in Analysen', async () => {
+  const s = session(), schema = answerSchemaFor(s.request)
+  assert.deepEqual(schema.properties.shifts.items.properties.person.enum, ['P1'])
+  assert.deepEqual(schema.properties.shifts.items.properties.group.enum, ['G1'])
+  assert.deepEqual(schema.properties.shifts.items.properties.date.enum, ['2027-01-04', '2027-01-05', '2027-01-06', '2027-01-07', '2027-01-08'])
+  assert.equal(answerSchemaFor(session(seeded(), 'late').request).properties.shifts.maxItems, 0)
+  let sent
+  const api = handler({ fetch: async (_, options) => { sent = JSON.parse(options.body); return gemini() } })
+  assert.equal((await api(request(s.request))).status, 200)
+  assert.deepEqual(sent.generationConfig.responseJsonSchema, schema)
+})
+
+test('Harte Deadline beendet auch nicht kooperative Auth-, Fetch- und Antwortstreams; keine automatische Wiederholung', async () => {
+  const never = () => new Promise(() => {})
+  for (const patch of [{ authorize: never }, { fetch: never }, { fetch: async () => new Response(new ReadableStream({ pull: never })) }]) {
+    const response = await handler({ timeoutMs: 5, ...patch })(request(session().request))
+    assert.equal(response.status, 504)
+  }
+})
+
+test('Ungeklärte Pausen bleiben netto unbekannt; explizite Nullpause und mehrere Dienste rechnen korrekt', () => {
+  const shift = { id: 's', employeeId: employee.id, groupId: employee.groupId, date, start: '07:00', end: '10:00' }
+  assert.deepEqual(aiTimeSummary([shift]), { gross: 180, knownPause: 0, net: null, missing: 1 })
+  const preview = aiPreview(session(), answer())
+  assert.ok(preview.issues.some(issue => issue.id.startsWith('pause:') && issue.cause.includes('ungeklärt')))
+  assert.ok(!preview.issues.some(issue => issue.id.startsWith('hours:') || issue.id.startsWith('distribution:')))
+  assert.equal(session(seeded({ shifts: [shift] }), 'late').request.hours[0].net, null)
+  assert.deepEqual(aiTimeSummary([{ ...shift, breakMinutes: 0 }, { ...shift, id: 's2', start: '11:00', end: '13:00', breakMinutes: 15 }]), { gross: 300, knownPause: 15, net: 285, missing: 0 })
+  assert.equal(session(seeded({ shifts: [{ ...shift, breakMinutes: 0 }] }), 'late').request.hours[0].net, 180)
+})
+
+test('Letzte Speichersperre erkennt Publikationsänderung während der Generator-Prüfung', () => {
+  const storage = seeded(), preview = aiPreview(session(storage), answer()), before = [...storage.values]
+  let seenPublication = false, changed = false
+  const guarded = { getItem(key) {
+    if (key === publicationKey) seenPublication = true
+    if (seenPublication && !changed && key === 'kitaplanio-lite:employees:v1') { changed = true; storage.values.set(publicationKey, JSON.stringify({ version: 1, plans: [] })) }
+    return storage.getItem(key)
+  }, setItem: storage.setItem }
+  assert.throws(() => adoptAi(guarded, preview, true), /geändert/)
+  assert.equal(changed, true); assert.equal(storage.writes, 0)
+  for (const [key, value] of before) assert.equal(storage.getItem(key), value)
+})
+
+test('Cloud-Arbeitsbereich speichert gemeinsam in genau einem Cache-Schreibvorgang; Quota-Fehler erhalten Cache und lokale Originale', () => {
+  for (const fail of [false, true]) {
+    const raw = seeded({ fail }), owner = '11111111-1111-4111-8111-111111111111', cacheKey = `caro:sync-workspace:v1:${owner}`
+    const payload = Object.fromEntries(AREAS.map(key => [key, raw.getItem(key) === null ? null : JSON.parse(raw.getItem(key))]))
+    raw.values.set('caro:sync-active:v1', owner)
+    raw.values.set(cacheKey, JSON.stringify({ version: 1, owner, revision: 1, base: payload, local: payload, lastSync: '2027-01-01T00:00:00Z' }))
+    const before = [...raw.values], storage = createAppStorage(raw), preview = aiPreview(session(storage), answer())
+    if (fail) { assert.throws(() => adoptAi(storage, preview, true), /quota/); assert.deepEqual([...raw.values], before); assert.equal(raw.writes, 0) }
+    else {
+      assert.equal(adoptAi(storage, preview, true), 1); assert.equal(raw.writes, 1)
+      const cache = JSON.parse(raw.getItem(cacheKey)); assert.equal(cache.local[shiftsKey].shifts.length, 1)
+      for (const [key, value] of before) if (key !== cacheKey) assert.equal(raw.getItem(key), value)
+      for (const key of AREAS) if (key !== shiftsKey) assert.deepEqual(cache.local[key], payload[key])
+    }
+  }
+})
+
+test('Echte UI: gleiche Anmeldung erhält Vorschau; Storage-Änderung und Kontowechsel verwerfen sie; eigene Übernahme bleibt fehlerfrei', async () => {
+  const { createRequire } = await import('node:module'), { pathToFileURL } = await import('node:url'), require = createRequire(import.meta.url)
+  const bundle = await build({ entryPoints: ['src/modules/ki-assistent/AssistantPage.tsx'], bundle: true, write: false, platform: 'node', format: 'esm', jsx: 'automatic', loader: { '.css': 'empty' }, plugins: [{ name: 'assistant-lifecycle', setup(b) {
+    b.onResolve({ filter: /^react$/ }, () => ({ path: 'hooks', namespace: 'ui' }))
+    b.onLoad({ filter: /hooks/, namespace: 'ui' }, () => ({ contents: 'export const useState = x => globalThis.liveUi.state(x); export const useRef = x => globalThis.liveUi.ref(x); export const useEffect = (fn,deps) => globalThis.liveUi.effect(fn,deps);' }))
+    b.onResolve({ filter: /^react\// }, args => ({ path: pathToFileURL(require.resolve(args.path)).href, external: true }))
+    b.onResolve({ filter: /cloud\/client$/ }, () => ({ path: 'client', namespace: 'ui' }))
+    b.onLoad({ filter: /client/, namespace: 'ui' }, () => ({ contents: 'export const cloudClient = () => ({client:globalThis.liveUi.client,message:""});' }))
+    b.onResolve({ filter: /cloud\/access$/ }, () => ({ path: 'access', namespace: 'ui' }))
+    b.onLoad({ filter: /access/, namespace: 'ui' }, () => ({ contents: 'export const verifyCloudAccess = async () => ({connected:true,userId:globalThis.liveUi.owner});' }))
+  } }] })
+  const { AssistantPage } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
+  const priorUi = globalThis.liveUi, priorWindow = globalThis.window, descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+  const raw = seeded(), owner = '11111111-1111-4111-8111-111111111111', cacheKey = `caro:sync-workspace:v1:${owner}`
+  const payload = Object.fromEntries(AREAS.map(key => [key, raw.getItem(key) === null ? null : JSON.parse(raw.getItem(key))]))
+  raw.values.set('caro:sync-active:v1', owner); raw.values.set(cacheKey, JSON.stringify({ version: 1, owner, revision: 1, base: payload, local: payload, lastSync: '2027-01-01T00:00:00Z' }))
+  const listeners = new Map(), slots = [], pending = []; let cursor = 0, authEvent
+  const harness = { owner, client: { auth: { onAuthStateChange(fn) { authEvent = fn; return { data: { subscription: { unsubscribe() {} } } } } }, functions: { invoke: async () => ({ data: answer(), error: null }) } },
+    state(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === 'function' ? initial() : initial; return [slots[i], next => { slots[i] = typeof next === 'function' ? next(slots[i]) : next }] },
+    ref(initial) { const i = cursor++; return slots[i] ??= { current: initial } },
+    effect(fn, deps) { const i = cursor++, previous = slots[i]; if (!previous || deps.some((value, index) => !Object.is(value, previous.deps[index]))) { previous?.cleanup?.(); slots[i] = { deps }; pending.push(() => { slots[i].cleanup = fn() }) } },
+  }
+  const elements = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(elements)]
+  const render = () => { cursor = 0; const tree = elements(AssistantPage()); pending.splice(0).forEach(fn => fn()); return tree }
+  const button = (tree, text) => tree.find(node => node.type === 'button' && node.props.children === text)
+  const showsPreview = tree => tree.some(node => node.type === 'h2' && node.props.children === 'Vorschau · noch nicht gespeichert')
+  globalThis.liveUi = harness; globalThis.window = { localStorage: raw, addEventListener: (type, fn) => listeners.set(type, fn), removeEventListener: type => listeners.delete(type), dispatchEvent: event => listeners.get(event.type)?.(event) }
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { onLine: true } })
+  try {
+    let tree = render()
+    tree.find(node => node.type === 'input' && node.props.type === 'date').props.onChange({ target: { value: date } })
+    tree.find(node => node.type === 'input' && node.props.type === 'checkbox').props.onChange({ target: { checked: true } })
+    const ask = async () => { render().find(node => node.props?.className === 'ai-prompt').props.onClick(); await new Promise(resolve => setImmediate(resolve)); return render() }
+    tree = await ask(); assert.ok(showsPreview(tree))
+    assert.ok(tree.some(node => node.type === 'small' && String(node.props.children).includes('Netto ungeklärt')))
+    authEvent('SIGNED_IN', { user: { id: owner } }); assert.ok(showsPreview(render()))
+    const changed = JSON.parse(raw.getItem(cacheKey)); changed.local[shiftsKey].shifts.push({ id: 'later', employeeId: employee.id, groupId: employee.groupId, date: '2027-01-11', start: '07:00', end: '08:00' }); raw.values.set(cacheKey, JSON.stringify(changed))
+    listeners.get('storage')(); assert.equal(showsPreview(render()), false)
+    tree = await ask(); button(tree, 'Vorschlag übernehmen').props.onClick(); tree = render(); button(tree, 'Übernahme ausdrücklich bestätigen').props.onClick()
+    await new Promise(resolve => setImmediate(resolve)); tree = render()
+    assert.equal(showsPreview(tree), false); assert.ok(!tree.some(node => node.props?.role === 'alert'))
+    assert.equal(JSON.parse(raw.getItem(cacheKey)).local[shiftsKey].shifts.length, 2)
+    tree = await ask(); authEvent('SIGNED_IN', { user: { id: 'other' } }); tree = render()
+    assert.equal(showsPreview(tree), false); assert.equal(tree.find(node => node.type === 'input' && node.props.type === 'checkbox').props.checked, false)
+  } finally { slots.forEach(value => value?.cleanup?.()); globalThis.liveUi = priorUi; globalThis.window = priorWindow; if (descriptor) Object.defineProperty(globalThis, 'navigator', descriptor); else delete globalThis.navigator }
 })

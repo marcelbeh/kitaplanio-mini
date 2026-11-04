@@ -18,6 +18,15 @@ export type AiSession = { request: AiRequest; context: GeneratorContext; publica
 export type AiPreview = { session: AiSession; answer: AiAnswer; draft: Draft; blockers: string[]; issues: ReturnType<typeof proposalIssues> }
 const day = (date: string) => ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date(`${date}T00:00:00Z`).getUTCDay()]
 const minute = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3))
+// Keep hard rule results, but don't turn workTime's fallback into exact net-hour hints.
+function pauseAwareIssues(issues: ReturnType<typeof proposalIssues>, context: GeneratorContext, from: string, to: string) {
+  const unknown = new Set(context.shifts.filter(shift => shift.date >= from && shift.date <= to && shift.breakMinutes === undefined).map(shift => shift.employeeId))
+  return [...issues.filter(issue => ![...unknown].some(id => issue.kind === 'hint' && [`hours:${id}`, `distribution:${id}`].includes(issue.id))), ...[...unknown].map(id => ({
+    id: `pause:${id}`, kind: 'hint' as const, date: from, person: context.employees.find(person => person.id === id)?.name ?? 'Mitarbeiter',
+    cause: 'Pausendauer nicht vollständig festgelegt. Nettozeit und Vergleich mit Vertragsstunden sind ungeklärt.',
+    correction: 'Pausen ausdrücklich erfassen (auch 0 Minuten, falls tatsächlich keine Pause vorgesehen ist); danach Stunden erneut prüfen.',
+  }))]
+}
 // Construct every field explicitly. Never serialize domain objects or replace names in free text.
 export function prepareAiSession(storage: StorageAccess, task: Task, date: string): AiSession {
   const context = readGeneratorContext(storage), setup = context.setup
@@ -32,7 +41,7 @@ export function prepareAiSession(storage: StorageAccess, task: Task, date: strin
   const anonymous = (shift: Shift): AnonymousShift => ({ person: person(shift.employeeId), group: group(shift.groupId), date: shift.date, start: shift.start, end: shift.end, pause: shift.breakMinutes ?? null })
   const restDays = setup.planningRules?.minRestMinutes ? Math.min(7, Math.ceil(setup.planningRules.minRestMinutes / 1440)) : 0
   const weekly = task !== 'late', baseline = task === 'plan' ? generateProposal(context, from).shifts : []
-  const localIssues = weekly ? checkPlan({ from, to, setup, employees: context.employees, absences: context.absences, inspection: { entries: context.shifts } }) : []
+  const localIssues = weekly ? pauseAwareIssues(checkPlan({ from, to, setup, employees: context.employees, absences: context.absences, inspection: { entries: context.shifts } }), context, from, to) : []
   const report = analyticsReport(context, task === 'late' ? 'month' : 'week', date)
   const codes = ['overlap', 'absence', 'invalid', 'duplicate', 'person', 'group', 'availability', 'fixed', 'rest', 'hours', 'distribution', 'text', 'staff', 'demand', 'pause', 'half', 'long']
   const coverage = weekly ? calendarWeek(from).days.flatMap(date => calculateStaffing(date, setup, context.shifts, context.absences, context.employees).windows.map(window => ({ date, area: window.area.startsWith('group:') ? group(window.area.slice(6)) : window.area, start: window.start, end: window.end, required: window.required, actual: window.actual, possible: window.possible, status: window.status }))) : []
@@ -48,7 +57,7 @@ export function prepareAiSession(storage: StorageAccess, task: Task, date: strin
     absences: weekly ? context.absences.filter(item => item.startDate <= to && item.endDate >= from).map(item => ({ person: person(item.employeeId), from: item.startDate < from ? from : item.startDate, to: item.endDate > to ? to : item.endDate, portion: item.portion })) : [],
     events: weekly ? listOccurrences(context.events, from, to).map(item => { const event = context.events.find(event => event.id === item.eventId)!; return { date: item.date, start: item.start, end: item.end, people: affectedEmployeeIds(event, context.employees).map(person), groups: event.groupIds.map(group), wholeTeam: event.wholeTeam } }) : [],
     coverage, issues: localIssues.map(issue => ({ date: issue.date, kind: issue.kind, code: codes.includes(issue.id.split(':')[0]) ? issue.id.split(':')[0] : 'other' })),
-    hours: report.rows.map(item => ({ person: person(item.id), net: item.net, early: item.early, core: item.core, late: item.late, weekend: item.weekend })),
+    hours: report.rows.map(item => ({ person: person(item.id), net: item.missingBreak ? null : item.net, early: item.early, core: item.core, late: item.late, weekend: item.weekend })),
   }
   parseRequest(request)
   return { request, context, publications, workspace: storage.getItem(ACTIVE_KEY), people, groups }
@@ -80,10 +89,10 @@ export function aiPreview(session: AiSession, value: unknown): AiPreview {
   }
   for (const person of context.employees) {
     const proposed = shifts.filter(shift => shift.employeeId === person.id)
-    if (proposed.length && workTime([...context.shifts, ...shifts].filter(shift => shift.employeeId === person.id && shift.date >= session.request.from && shift.date <= session.request.to)).net > person.weeklyMinutes) blockers.push(`${person.name}: Vorgeschlagener Wochenumfang überschreitet die hinterlegten Vertragsstunden.`)
+    if (proposed.length && workTime([...context.shifts, ...shifts].filter(shift => shift.employeeId === person.id && shift.date >= session.request.from && shift.date <= session.request.to)).net > person.weeklyMinutes) blockers.push(`${person.name}: Der Wochenumfang nach bisher bekannten Pausen überschreitet die Vertragsstunden. Ungeklärte Pausen zuerst manuell prüfen; kein exakter Netto-/Überstundenwert.`)
   }
   const draft: Draft = { context, proposal: { from: session.request.from, to: session.request.to, shifts, demands: [], reasons: answer.warnings, explanations: answer.shifts.map(item => `${item.person} · ${item.date}: ${item.reason}`) } }
-  const issues = session.request.task !== 'late' ? proposalIssues(context, draft.proposal) : []
+  const issues = session.request.task !== 'late' ? pauseAwareIssues(proposalIssues(context, draft.proposal), { ...context, shifts: [...context.shifts, ...shifts] }, session.request.from, session.request.to) : []
   for (const shift of shifts) shiftWarnings(shift, [], context.events, context.employees).forEach((cause, index) => issues.push({ id: `ai-event:${shift.id}:${index}`, kind: 'hint', date: shift.date, person: shift.employeeName!, cause, correction: 'Sondertermin und geplante Arbeitszeit vor Übernahme bewusst prüfen.' }))
   return { session, answer, draft, blockers: [...new Set(blockers)], issues }
 }
@@ -93,7 +102,14 @@ export function adoptAi(storage: StorageAccess, preview: AiPreview, confirmed = 
   // Revalidate the untrusted response and deterministic rules immediately before the existing atomic write.
   const checked = aiPreview(preview.session, preview.answer)
   if (checked.blockers.length) throw Error('Nicht erfüllte Vorgaben verhindern die Übernahme. Bitte manuell planen oder einen neuen Vorschlag anfordern.')
-  return adoptProposal(storage, checked.draft, {}, true)
+  return adoptProposal({
+    getItem: key => storage.getItem(key),
+    setItem(key, value) {
+      // Final guard also covers workspace/publication changes during deterministic revalidation.
+      assertAiCurrent(storage, preview.session)
+      storage.setItem(key, value)
+    },
+  }, checked.draft, {}, true)
 }
 export function localAnswerText(text: string, session: AiSession): string {
   return text.replace(/\b[PG][1-9][0-9]{0,2}\b/g, alias => {
@@ -102,3 +118,9 @@ export function localAnswerText(text: string, session: AiSession): string {
   })
 }
 export function aiWeekLabel(session: AiSession) { return `${session.request.from} – ${session.request.to} · Zeiten HH:MM, Pausen neuer Dienste nicht festgelegt` }
+
+// Reuse workTime, but never present its zero fallback as a confirmed pause/net duration.
+export function aiTimeSummary(shifts: Shift[]) {
+  const time = workTime(shifts), missing = shifts.filter(shift => shift.breakMinutes === undefined).length
+  return { gross: time.gross, knownPause: time.pause, net: missing ? null : time.net, missing }
+}

@@ -1,3 +1,4 @@
+import { TemplatePanel } from './TemplatePanel'
 import { CopyWeekPanel } from './CopyWeekPanel'
 import { MonthView } from './MonthView'
 import { shiftPeriods } from './presentation'
@@ -41,7 +42,7 @@ function readSchedule() {
     shifts: read('Schichten', () => loadShifts(appStorage), []), errors,
   }
 }
-export function SchedulePage({ initialView = 'week', onViewChange }: { initialView?: 'week' | 'month'; onViewChange?: (view: 'week' | 'month') => void } = {}) {
+export function SchedulePage({ initialView = 'week', initialSection, onViewChange }: { initialView?: 'week' | 'month'; initialSection?: 'templates'; onViewChange?: (view: 'week' | 'month') => void } = {}) {
   const [storedData, setData] = useState(readSchedule)
   const [view, setView] = useState<'week' | 'month'>(initialView)
   const [today, setToday] = useState(localDate)
@@ -55,7 +56,11 @@ export function SchedulePage({ initialView = 'week', onViewChange }: { initialVi
   const [selectedPublication, setSelectedPublication] = useState<PublishedPlan | null>(null)
   const [rulesMessage, setRulesMessage] = useState('')
   const [generatorError, setGeneratorError] = useState('')
-  useEffect(() => { if (!editor && !draft) { setView(initialView); if (initialView === 'month') setSelectedPublication(null) } }, [initialView, editor, draft])
+  useEffect(() => { if (!editor && !draft) { setView(initialView); if (initialView === 'month' || initialSection === 'templates') setSelectedPublication(null) } }, [initialView, initialSection, editor, draft])
+  useEffect(() => {
+    if (initialSection !== 'templates' || view !== 'week' || editor || draft || selectedPublication) return
+    window.requestAnimationFrame(() => { const target = document.getElementById('schedule-templates'); target?.focus(); target?.scrollIntoView({ block: 'start' }) })
+  }, [initialSection, view, editor, draft, selectedPublication])
   const data = draft ? { ...draft.context, groups: draft.context.setup?.groups ?? [], errors: [] as string[], shifts: [...draft.context.shifts, ...draft.proposal.shifts], inspection: { entries: [...draft.context.shifts, ...draft.proposal.shifts] } } : storedData
   useEffect(() => {
     const timer = window.setInterval(() => setToday(localDate()), 60_000)
@@ -159,6 +164,7 @@ export function SchedulePage({ initialView = 'week', onViewChange }: { initialVi
       <p className="kita-help">Der Filter ändert nur die Personenansicht. Personalbedarf, Planprüfung und Freigabe berücksichtigen weiterhin den gesamten Plan.</p>
       {dateError && <p className="kita-errors" role="alert">{dateError}</p>}
     </section>
+    {!draft && !selectedPublication && <TemplatePanel date={selected} unavailable={data.errors.length > 0} onDone={(date, count, skipped) => { setData(readSchedule()); setNotice(`${count} Vorlagenschichten übernommen, ${skipped} übersprungen.`); showDay(date) }} />}
     {!draft && !selectedPublication && <CopyWeekPanel key={week.monday} date={selected} unavailable={data.errors.length > 0} onDone={(date, count, skipped) => { setData(readSchedule()); setNotice(`${count} Schichten kopiert, ${skipped} übersprungen. Vorhandene Schichten und Freigaben bleiben unverändert.`); showDay(date) }} />}
     <PublicationPanel plan={printable} selected={selectedPublication} onSelect={setSelectedPublication} issues={issues} locked={!!draft} unavailable={data.errors.length > 0} />
     {!selectedPublication && <>

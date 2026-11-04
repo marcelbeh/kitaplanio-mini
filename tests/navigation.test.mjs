@@ -91,3 +91,18 @@ test('Monatsübersicht ist direkt über Navigation erreichbar; Ansichtswechsel a
     assert.ok(elements(more).some(node => node.type === 'a' && node.props.href === '#monatsplan'))
   } finally { app.restore() }
 })
+
+test('Vorlagen sind direkt in der Navigation und mobil unter Mehr mit dem richtigen Wochenbereich verlinkt', () => {
+  const app = mount('#vorlagen')
+  try {
+    let tree = app.render()
+    assert.equal(app.state[0].id, 'vorlagen')
+    assert.ok(tree.some(node => node.type === 'a' && node.props.href === '#vorlagen'))
+    const schedule = tree.find(node => node.props?.initialSection === 'templates')
+    assert.equal(schedule.props.initialView, 'week')
+    tree.find(node => node.type === 'button' && 'aria-expanded' in node.props).props.onClick()
+    tree = app.render()
+    const more = tree.find(node => node.props?.id === 'mobile-more')
+    assert.ok(elements(more).some(node => node.type === 'a' && node.props.href === '#vorlagen'))
+  } finally { app.restore() }
+})

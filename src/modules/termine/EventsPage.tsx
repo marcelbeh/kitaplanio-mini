@@ -36,7 +36,7 @@ export function EventsPage() {
   function submit(event: FormEvent) {
     event.preventDefault()
     if (!editor) return
-    try { setEvents(saveEvent(appStorage, editor.value, editor.mode)); setEditor(null); setError(''); setNotice('Termin gespeichert.'); setFilters({ from: '', to: '' }) }
+    try { setEvents(saveEvent(appStorage, editor.value, editor.mode, editor.mode === 'update' ? events.find(item => item.id === editor.value.id) : undefined)); setEditor(null); setError(''); setNotice('Termin gespeichert.'); setFilters({ from: '', to: '' }) }
     catch (error) { setError((error as Error).message) }
   }
   const invalidFilter = filters.from && filters.to && filters.from > filters.to
@@ -49,7 +49,7 @@ export function EventsPage() {
   }
   return <div className="kita-setup employee-page absence-page">
     <div className="page-heading"><p className="eyebrow">caro.</p><h1 id="page-title" tabIndex={-1}>Sondertermine</h1><p>Termine für dein Team – einmalig oder wiederkehrend.</p></div>
-    <p className="kita-local-note">Lokal in diesem Browser gespeichert · keine Synchronisierung. Für die spätere Dienstplanung vorbereitet.</p>
+    <p className="kita-local-note">Im aktuellen Arbeitsbereich gespeichert. Cloud-Synchronisierung erfolgt nur im eingerichteten Cloud-Arbeitsbereich und auf Knopfdruck. Sondertermine werden im Dienstplan angezeigt.</p>
     {initial.eventError && <p role="alert" className="kita-errors">{initial.eventError}</p>}
     {initial.contextError && <p role="alert" className="absence-warning">{initial.contextError}</p>}
     {error && <p className="kita-errors" role="alert" ref={errorBox} tabIndex={-1}>{error}</p>}
@@ -87,7 +87,7 @@ export function EventsPage() {
         return <article className="kita-card" key={`${event.id}:${item.date}`}><span className="status preview-status">{EVENT_TYPES[event.type]}</span><h2>{event.title}</h2><p>{dateLabel(item.date)} · {item.start}–{item.end}</p><p>{affected}</p>{event.recurrence !== 'once' && <p>{event.recurrence === 'weekly' ? 'Wöchentlich' : 'Monatlich'} bis {dateLabel(event.until)} · Änderungen gelten für die gesamte Serie</p>}{event.note && <p style={{ whiteSpace: 'pre-wrap' }}>{event.note}</p>}
           {hints({ ...event, date: item.date, recurrence: 'once', until: '' }).map((hint, i) => <p className="absence-warning" key={i}>{hint}</p>)}
           <div className="kita-actions"><button className="kita-button secondary" onClick={() => open(event, 'update')}>Bearbeiten<span className="employee-sr-only">: {event.title}, {dateLabel(item.date)}</span></button><button className="kita-button secondary" onClick={() => { setDeleting(`${event.id}:${item.date}`); setError(''); setNotice('') }}>Löschen<span className="employee-sr-only">: {event.title}, {dateLabel(item.date)}</span></button></div>
-          {deleting === `${event.id}:${item.date}` && <div className="employee-delete" role="group" aria-label="Termin löschen bestätigen" tabIndex={-1} ref={deleteBox}><p>„{event.title}“{event.recurrence !== 'once' ? ' mit allen Wiederholungen' : ''} wirklich löschen?</p><div className="kita-actions"><button className="kita-button" onClick={() => { try { setEvents(deleteEvent(appStorage, event.id)); setDeleting(null); setError(''); setNotice('Termin gelöscht.') } catch (error) { setError((error as Error).message) } }}>Endgültig löschen</button><button className="kita-button secondary" onClick={() => setDeleting(null)}>Abbrechen</button></div></div>}
+          {deleting === `${event.id}:${item.date}` && <div className="employee-delete" role="group" aria-label="Termin löschen bestätigen" tabIndex={-1} ref={deleteBox}><p>„{event.title}“{event.recurrence !== 'once' ? ' mit allen Wiederholungen' : ''} wirklich löschen?</p><div className="kita-actions"><button className="kita-button" onClick={() => { try { setEvents(deleteEvent(appStorage, event.id, event)); setDeleting(null); setError(''); setNotice('Termin gelöscht.') } catch (error) { setError((error as Error).message) } }}>Endgültig löschen</button><button className="kita-button secondary" onClick={() => setDeleting(null)}>Abbrechen</button></div></div>}
         </article>
       })}</div>
     </>)}

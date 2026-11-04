@@ -8,7 +8,7 @@ import { addDays, calendarWeek, schedulePeople, validDate } from '../dienstplan/
 import { loadShifts } from '../dienstplan/schedule'
 import type { Shift } from '../dienstplan/schedule'
 import { dutyCounts, fairnessReport } from '../dienstplan/fairness'
-import { shiftPeriods } from '../dienstplan/presentation'
+import { netTimeProblem, shiftPeriods } from '../dienstplan/presentation'
 import { monthBounds, moveMonth } from '../dienstplan/month'
 
 export type PeriodMode = 'week' | 'month'
@@ -47,7 +47,7 @@ export function analyticsReport(data: AnalyticsData, mode: PeriodMode, date: str
     const shifts = entries.filter(shift => shift.employeeId === person.id), profile = data.employees.find(item => item.id === person.id)
     const counts = dutyCounts(person.id, entries, classificationKnown ? data.setup : null, range.from, range.to)
     const coreDates = new Set(shifts.filter(shift => shiftPeriods(shift, data.setup).some(period => period.kind === 'core')).map(shift => shift.date))
-    return { ...person, net: shiftKnown ? counts.net : null, early: classificationKnown ? counts.early : null, core: classificationKnown ? coreDates.size : null, late: classificationKnown ? counts.late : null, weekend: shiftKnown ? counts.weekend : null,
+    return { ...person, net: shiftKnown && !netTimeProblem(shifts) ? counts.net : null, early: classificationKnown ? counts.early : null, core: classificationKnown ? coreDates.size : null, late: classificationKnown ? counts.late : null, weekend: shiftKnown ? counts.weekend : null,
       contract: profile && Number.isSafeInteger(profile.weeklyMinutes) && profile.weeklyMinutes > 0 ? profile.weeklyMinutes : null,
       availability: profile ? `${profile.availability.start}–${profile.availability.end}` : null,
       absence: data.unavailable?.absences ? null : data.absences.some(absence => absence.employeeId === person.id && absence.startDate <= range.to && absence.endDate >= range.from),
@@ -55,7 +55,7 @@ export function analyticsReport(data: AnalyticsData, mode: PeriodMode, date: str
     }
   })
   const sum = (key: 'net' | 'early' | 'core' | 'late' | 'weekend') => rows.reduce((total, row) => total + (row[key] ?? 0), 0)
-  const totals = { net: shiftKnown ? sum('net') : null, early: classificationKnown ? sum('early') : null, core: classificationKnown ? sum('core') : null, late: classificationKnown ? sum('late') : null, weekend: shiftKnown ? sum('weekend') : null }
+  const totals = { net: shiftKnown && rows.every(row => row.net !== null) ? sum('net') : null, early: classificationKnown ? sum('early') : null, core: classificationKnown ? sum('core') : null, late: classificationKnown ? sum('late') : null, weekend: shiftKnown ? sum('weekend') : null }
   const warnings: { week: string; text: string }[] = []
   const warningsAvailable = classificationKnown && !data.unavailable?.employees && !data.unavailable?.absences
   if (warningsAvailable) {

@@ -42,17 +42,17 @@ export function AbsencesPage() {
     if (!editor) return
     const issues = validateAbsence(editor.value)
     if (issues.length) { setErrors(issues); return }
-    try { setStore(saveAbsence(appStorage, editor.value, editor.mode)); setEditor(null); setErrors([]); setNotice('Abwesenheit gespeichert.'); setFilters(emptyFilters) }
+    try { setStore(saveAbsence(appStorage, editor.value, editor.mode, editor.mode === 'update' ? store.absences.find(item => item.id === editor.value.id) : undefined)); setEditor(null); setErrors([]); setNotice('Abwesenheit gespeichert.'); setFilters(emptyFilters) }
     catch (error) { setErrors([(error as Error).message]) }
   }
   function confirmDelete() {
     if (!deleting) return
-    try { setStore(deleteAbsence(appStorage, deleting)); setDeleting(null); setErrors([]); setNotice('Abwesenheit gelöscht.') }
+    try { setStore(deleteAbsence(appStorage, deleting, store.absences.find(item => item.id === deleting))); setDeleting(null); setErrors([]); setNotice('Abwesenheit gelöscht.') }
     catch (error) { setErrors([(error as Error).message]) }
   }
   return <div className="kita-setup employee-page absence-page">
     <div className="page-heading"><p className="eyebrow">caro.</p><h1 id="page-title" tabIndex={-1}>Abwesenheiten</h1><p>Urlaub, Krankheit und weitere Abwesenheiten – übersichtlich an einem Ort.</p></div>
-    <p className="kita-local-note">Lokal in diesem Browser gespeichert · keine Synchronisierung. Es werden noch keine Sollstunden, Urlaubskonten oder Dienstpläne berechnet.</p>
+    <p className="kita-local-note">Im aktuellen Arbeitsbereich gespeichert. Cloud-Synchronisierung erfolgt nur im eingerichteten Cloud-Arbeitsbereich und auf Knopfdruck. Abwesenheiten werden in der Dienstplanung berücksichtigt; es werden keine Sollstunden oder Urlaubskonten erfunden.</p>
     {initial.teamError && <p className="kita-errors" role="alert">{initial.teamError}</p>}
     {initial.absenceError && <p className="kita-errors" role="alert">{initial.absenceError}</p>}
     {errors.length > 0 && <div className="kita-errors" role="alert" tabIndex={-1} ref={errorBox}><strong>Bitte prüfen:</strong><ul>{errors.map((error, i) => <li key={i}>{error}</li>)}</ul></div>}

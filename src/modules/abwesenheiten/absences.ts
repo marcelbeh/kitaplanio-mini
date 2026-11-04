@@ -71,7 +71,7 @@ export function loadAbsences(storage: StorageAccess): AbsenceStore {
   if (!record(value) || value.version !== 1 || !Array.isArray(value.absences) || !value.absences.every(absenceShape) || value.absences.some(item => validateAbsence(item).length || !item.employeeName.trim()) || new Set(value.absences.map(item => item.id)).size !== value.absences.length) throw new Error('Die gespeicherten Abwesenheiten sind ungültig oder haben eine unbekannte Version. Vorhandene Daten wurden nicht überschrieben.')
   return value as AbsenceStore
 }
-export function saveAbsence(storage: StorageAccess, value: Absence, mode: 'create' | 'update'): AbsenceStore {
+export function saveAbsence(storage: StorageAccess, value: Absence, mode: 'create' | 'update', expected?: Absence): AbsenceStore {
   if (!absenceShape(value)) throw new Error('Die Abwesenheit hat ein ungültiges Datenformat.')
   const errors = validateAbsence(value)
   if (errors.length) throw new Error(errors.join(' '))
@@ -79,6 +79,7 @@ export function saveAbsence(storage: StorageAccess, value: Absence, mode: 'creat
   const old = current.absences.find(item => item.id === value.id)
   if (mode === 'create' && old) throw new Error('Diese Abwesenheits-ID ist bereits vergeben.')
   if (mode === 'update' && !old) throw new Error('Der Eintrag wurde inzwischen entfernt. Bitte die Übersicht neu laden.')
+  if (expected && JSON.stringify(old) !== JSON.stringify(expected)) throw Error('Die Abwesenheit wurde inzwischen geändert. Bitte neu laden; es wurde nichts überschrieben.')
   const employee = loadEmployees(storage).employees.find(item => item.id === value.employeeId)
   // Existing historical references remain editable, but new entries need a current team member.
   if (!employee && (!old || old.employeeId !== value.employeeId)) throw new Error('Bitte einen vorhandenen Mitarbeiter auswählen.')
@@ -89,9 +90,10 @@ export function saveAbsence(storage: StorageAccess, value: Absence, mode: 'creat
   storage.setItem(ABSENCES_KEY, JSON.stringify(next))
   return next
 }
-export function deleteAbsence(storage: StorageAccess, id: string): AbsenceStore {
+export function deleteAbsence(storage: StorageAccess, id: string, expected?: Absence): AbsenceStore {
   const current = loadAbsences(storage)
   if (!current.absences.some(item => item.id === id)) throw new Error('Der Eintrag wurde bereits entfernt. Bitte die Übersicht neu laden.')
+  if (expected && JSON.stringify(current.absences.find(item => item.id === id)) !== JSON.stringify(expected)) throw Error('Die Abwesenheit wurde inzwischen geändert. Bitte Löschung erneut prüfen.')
   const next: AbsenceStore = { version: 1, absences: current.absences.filter(item => item.id !== id) }
   storage.setItem(ABSENCES_KEY, JSON.stringify(next))
   return next

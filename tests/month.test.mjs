@@ -97,3 +97,19 @@ test('Tagesklick schaltet vom Monat in die richtige Woche und fokussiert auf iPh
     }finally{globalThis.window=oldWindow;globalThis.document=oldDocument;globalThis.monthHooks=oldHooks}
   }
 })
+
+test('Monatsstunden bleiben bei fehlenden Pausen, Überschneidungen oder unlesbaren Schichten ungeklärt statt erfundener Nettozeit',()=>{
+  const data=fixture(),base=data.shifts[0]
+  data.shifts=[{...base,id:'unknown',date,start:'07:00',end:'10:00'}];delete data.shifts[0].breakMinutes
+  data.inspection={entries:data.shifts}
+  const original=JSON.stringify(data),row=monthOverview(date,data).hours.find(person=>person.id===base.employeeId)
+  assert.equal(row.net,null);assert.equal(JSON.stringify(data),original)
+  const rendered=nodes(MonthView({date,data,filter:'',onFilter(){},onDate(){},onOpenDay(){}}))
+  assert.ok(rendered.some(node=>node.type==='dd'&&node.props.children==='ungeklärt'))
+  data.shifts[0].breakMinutes=0
+  assert.equal(monthOverview(date,data).hours.find(person=>person.id===base.employeeId).net,180)
+  data.shifts.push({...data.shifts[0],id:'overlap',start:'09:00',end:'11:00'})
+  assert.equal(monthOverview(date,data).hours.find(person=>person.id===base.employeeId).net,null)
+  data.shifts=[];data.inspection={entries:[],problem:'Nicht lesbar'};data.errors=['Schichten konnten nicht geladen werden.']
+  assert.ok(monthOverview(date,data).hours.every(person=>person.net===null))
+})

@@ -29,7 +29,7 @@ test('Bestehende Zeitgrenzen gelten exakt; fehlende Pausen erzeugen keine Standa
   const data=fixture(),base=data.shifts[0];data.absences=[]
   data.shifts=[shifted(base,'early',date,'07:00','08:00'),shifted(base,'core',date,'08:00','15:00'),shifted(base,'late',date,'15:00','16:00')];delete data.shifts[1].breakMinutes
   const row=analyticsReport(data,'week',date).rows.find(r=>r.id===base.employeeId)
-  assert.deepEqual([row.early,row.core,row.late],[1,1,1]);assert.equal(row.net,540);assert.equal(row.missingBreak,true)
+  assert.deepEqual([row.early,row.core,row.late],[1,1,1]);assert.equal(row.net,null);assert.equal(row.missingBreak,true)
 })
 test('Nur tatsächlich gespeicherte Wochenenddienste zählen; mehrere Teile am Sonntag bleiben ein Diensttag',()=>{
   const data=fixture(),base=data.shifts[0]
@@ -76,4 +76,23 @@ test('Auswertungsseite rendert mobile Karten für alle elf Personen und schreibt
   const {AnalyticsPage}=await bundle('src/modules/auswertungen/AnalyticsPage.tsx',true),payload=buildDemo(localDate()).payload,values=new Map(Object.entries(payload).map(([key,value])=>[key,JSON.stringify(value)])),oldWindow=globalThis.window
   const before=[...values];let writes=0;globalThis.window={localStorage:{getItem:key=>values.get(key)??null,setItem(){writes++;assert.fail('read-only')},removeItem(){writes++;assert.fail('read-only')}}}
   try{const html=renderToStaticMarkup(createElement(AnalyticsPage));assert.equal((html.match(/class="analytics-person"/g)??[]).length,11);assert.match(html,/333:00/);assert.match(html,/Früh/);assert.match(html,/Spät/);assert.match(html,/Wochenende/);assert.match(html,/Sortieren nach/);assert.match(html,/Kalendermonat/);assert.equal(writes,0);assert.deepEqual([...values],before)}finally{globalThis.window=oldWindow}
+})
+
+test('Ungeklärte Nettozeit wird nicht als Null oder Teil-Team-Summe ausgegeben; explizite Nullpause bleibt verlässlich',()=>{
+  const data=fixture(),base=data.shifts[0],other=data.employees.find(person=>person.groupId!==base.groupId)
+  data.shifts=[shifted(base,'unknown',date,'07:00','10:00'),{...shifted(base,'other',date,'07:00','08:00'),employeeId:other.id,groupId:other.groupId}]
+  delete data.shifts[0].breakMinutes
+  const before=JSON.stringify(data),unknown=analyticsReport(data,'week',date)
+  assert.equal(unknown.rows.find(row=>row.id===base.employeeId).net,null)
+  assert.equal(unknown.rows.find(row=>row.id===other.id).net,60)
+  assert.equal(unknown.totals.net,null)
+  assert.equal(analyticsReport(data,'week',date,other.groupId).totals.net,60)
+  assert.equal(sortReport(unknown.rows,'net').at(-1).id,base.employeeId)
+  assert.equal(JSON.stringify(data),before)
+  data.shifts[0].breakMinutes=0
+  assert.equal(analyticsReport(data,'week',date).totals.net,240)
+  data.shifts.push(shifted(base,'overlap',date,'09:00','11:00'))
+  const overlap=analyticsReport(data,'week',date)
+  assert.equal(overlap.rows.find(row=>row.id===base.employeeId).net,null);assert.equal(overlap.totals.net,null)
+  assert.equal(overlap.rows.find(row=>row.id===other.id).net,60)
 })

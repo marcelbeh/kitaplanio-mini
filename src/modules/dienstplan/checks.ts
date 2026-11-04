@@ -1,3 +1,4 @@
+import { netTimeProblem } from './presentation'
 import type { StorageAccess, KitaSetup, PlanningLimits } from '../kita/setup'
 import type { Employee, Weekday } from '../mitarbeiter/employees'
 import type { Absence } from '../abwesenheiten/absences'
@@ -96,7 +97,7 @@ export function checkPlan(input: { from: string; to: string; setup: KitaSetup | 
       const fixed = person.fixedTimes[weekday as Weekday]
       if (fixed && (entries[0].start !== fixed.start || entries.some(shift => shift.start < fixed.start || shift.end > fixed.end) || entries.reduce((end, shift) => shift.end > end ? shift.end : end, '') !== fixed.end)) add(`fixed:${person.id}:${date}`, 'conflict', date, person.name, `Dienstbeginn/-ende weicht von verbindlichen Tageszeiten ${fixed.start}–${fixed.end} ab.`, 'Die gespeicherten festen Tageszeiten oder die Schichten dieses Tages prüfen.')
     }
-    if (!sourceUnavailable && current.every(shift => shift.breakMinutes !== undefined) && Number.isSafeInteger(person.weeklyMinutes) && person.weeklyMinutes > 0) {
+    if (!sourceUnavailable && !netTimeProblem(current) && Number.isSafeInteger(person.weeklyMinutes) && person.weeklyMinutes > 0) {
       const net = workTime(current).net
       if (net !== person.weeklyMinutes) add(`hours:${person.id}`, 'hint', from, person.name, `Geplante Nettozeit Mo–So ${formatMinutes(net)}; vertraglich ${formatMinutes(person.weeklyMinutes)}.`, 'Wochenumfang einschließlich Wochenenddiensten prüfen; Abwesenheiten werden nicht als fiktive Arbeitszeit gutgeschrieben.')
       const daily = [...perDay.values()].map(entries => workTime(entries).net)

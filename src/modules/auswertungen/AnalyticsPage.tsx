@@ -8,7 +8,7 @@ import './analytics.css'
 
 const labels = { net: 'Geplante Nettozeit', early: 'Früh', core: 'Kern', late: 'Spät', weekend: 'Wochenende' } as const
 const metricKeys = ['net', 'early', 'core', 'late', 'weekend'] as const
-const value = (key: typeof metricKeys[number], count: number | null) => count === null ? '—' : key === 'net' ? formatMinutes(count) : count
+const value = (key: typeof metricKeys[number], count: number | null) => count === null ? key === 'net' ? 'ungeklärt' : '—' : key === 'net' ? formatMinutes(count) : count
 export function AnalyticsPage() {
   const [data, setData] = useState(() => readAnalyticsData(appStorage)), [mode, setMode] = useState<PeriodMode>('week')
   const [date, setDate] = useState(localDate), [group, setGroup] = useState(''), [sort, setSort] = useState<SortKey>('name'), [error, setError] = useState('')
@@ -28,7 +28,7 @@ export function AnalyticsPage() {
     return <div className="analytics-context"><span>{groups.find(item => item.id === row.groupId)?.name ?? 'Gruppenzuordnung ungeklärt'}</span><span>{row.historical ? data.unavailable?.employees ? 'Stammdaten nicht lesbar' : 'Historische Zuordnung · nicht mehr in den Stammdaten' : row.planned === null ? 'Schichten ungeklärt' : row.planned ? 'Im Zeitraum geplant' : 'Keine Schichten im Zeitraum'}</span><span>Aktueller Vertrag/Woche: {row.contract === null ? 'nicht bekannt' : formatMinutes(row.contract)} · Arbeitsrahmen: {row.availability ?? 'unbekannt'}</span><span>{row.absence === null ? 'Abwesenheiten ungeklärt' : row.absence ? 'Abwesenheit im Zeitraum erfasst' : 'Keine Abwesenheit im Zeitraum erfasst'}</span>{row.missingBreak && <span>Pausenangabe unvollständig</span>}</div>
   }
   function metrics(counts: typeof report.totals) {
-    return <dl className="analytics-values">{metricKeys.map(key => <div key={key}><dt>{labels[key]}</dt><dd>{value(key, counts[key])}{key === 'net' && <small> HH:MM</small>}</dd></div>)}</dl>
+    return <dl className="analytics-values">{metricKeys.map(key => <div key={key}><dt>{labels[key]}</dt><dd>{value(key, counts[key])}{key === 'net' && counts.net !== null && <small> HH:MM</small>}</dd></div>)}</dl>
   }
   return <div className="kita-setup analytics-page">
     <div className="page-heading"><p className="eyebrow">caro.</p><h1 id="page-title" tabIndex={-1}>Auswertungen</h1><p>Geplante Arbeitsstunden und Dienstverteilung – ausschließlich lesend.</p></div>
@@ -43,7 +43,7 @@ export function AnalyticsPage() {
     </section>
     {data.errors?.map(message => <p className="kita-errors" role="alert" key={message}>{message}</p>)}
     {!!data.errors?.length && <button className="kita-button secondary" onClick={() => setData(readAnalyticsData(appStorage))}>Daten erneut lesen</button>}
-    <p className="kita-help">Früh/Kern/Spät folgen den aktuell hinterlegten Kita-Zeiten. Netto nach erfassten Pausen; fehlende Pausenangaben lösen keinen Standardabzug aus. Jeder Diensttag zählt je Person pro Art höchstens einmal, auch bei Teilschichten. Früh/Kern/Spät können am selben Tag zusammentreffen – Schichtstunden werden unabhängig davon jeweils einmal addiert. Wochenenden zählen nur bei tatsächlich gespeicherten Schichten.</p>
+    <p className="kita-help">Früh/Kern/Spät folgen den aktuell hinterlegten Kita-Zeiten. Netto nach erfassten Pausen; fehlende Pausenangaben oder überschneidende Schichten lassen die Nettozeit und die betroffene Gesamtsumme ungeklärt. Es wird keine Nullpause angenommen. Jeder Diensttag zählt je Person pro Art höchstens einmal, auch bei Teilschichten. Früh/Kern/Spät können am selben Tag zusammentreffen – Schichtstunden werden unabhängig davon jeweils einmal addiert. Wochenenden zählen nur bei tatsächlich gespeicherten Schichten.</p>
     {!report.classificationKnown && <p className="kita-lock-note">Dienstarten sind ohne verlässliche Kita-Zeiten oder Schichtdaten nicht bestimmbar (—). Es werden keine Zeitgrenzen angenommen.</p>}
     <section className="kita-card" aria-label="Team-Gesamtsummen"><h2>Summe der Auswahl · {rows.length} Personen</h2>{metrics(report.totals)}</section>
     {report.empty && <p className="kita-lock-note">Keine Schichten in diesem Zeitraum und dieser Auswahl gespeichert. Vorhandene Stammdaten bzw. historische Einträge bleiben sichtbar.</p>}

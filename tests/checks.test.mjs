@@ -79,3 +79,12 @@ test('Ungültige Rohdaten werden trotz strengem P5a-Lader geprüft und niemals �
   }
   assert.match(inspectStoredShifts({ getItem() { throw Error('SecurityError') } }).problem, /nicht lesbar/)
 })
+
+
+test('Überschneidungen bleiben harte Konflikte, ohne vermeintlich präzise Netto-Vertragsabweichung', () => {
+  const entries = [shift('a', from, '08:00', '12:00'), shift('b', from, '11:00', '15:00')]
+  const issues = run(entries)
+  assert.ok(by(issues, 'overlap:').some(issue => issue.kind === 'conflict'))
+  assert.equal(by(issues, 'hours:').length, 0)
+  assert.equal(by(issues, 'distribution:').length, 0)
+})

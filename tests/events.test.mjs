@@ -42,3 +42,16 @@ test('CRUD schützt andere Speicher, beschädigte Daten und IDs; Konflikte block
     assert.equal(s.data.get(EVENTS_KEY), raw)
   }
 })
+
+test('Veraltete Terminbearbeitung und Löschbestätigung erhalten neuere Termine', () => {
+  const store=memory();saveEvent(store,entry(),'create')
+  const original=loadEvents(store)[0]
+  saveEvent(store,{...original,title:'Zwischenzeitlich geändert'},'update')
+  const before=store.getItem(EVENTS_KEY)
+  assert.throws(()=>saveEvent(store,{...original,note:'Veralteter Entwurf'},'update',original),/inzwischen geändert/)
+  assert.equal(store.getItem(EVENTS_KEY),before)
+  assert.throws(()=>deleteEvent(store,original.id,original),/inzwischen geändert/)
+  assert.equal(store.getItem(EVENTS_KEY),before)
+  const current=loadEvents(store)[0]
+  assert.equal(deleteEvent(store,current.id,current).length,0)
+})

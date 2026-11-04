@@ -45,8 +45,8 @@ export function MonthView({ date, data, filter, onFilter, onDate, onOpenDay }: P
         {days.some(day => day.weekend) && <div className="month-special-days">{days.filter(day => day.weekend).map(card)}</div>}
       </section>
     })}
-    <section className="kita-card month-hours" aria-label="Monatliche Nettoarbeitsstunden"><h2>Geplante Nettozeit · {title}</h2><p className="kita-help">Nur Schichten innerhalb dieses Monats, einschließlich vorhandener Wochenenddienste. Erfasste Pausen werden abgezogen; fehlende Pausenangaben erzeugen keinen automatischen Abzug. Keine Sollstunden- oder Überstundenberechnung.</p>
-      <dl>{month.hours.map(person => <div key={person.id}><dt>{person.name}{person.historical && <small> · nicht mehr im Team</small>}</dt><dd>{formatMinutes(person.net)} <small>HH:MM</small></dd></div>)}</dl>
+    <section className="kita-card month-hours" aria-label="Monatliche Nettoarbeitsstunden"><h2>Geplante Nettozeit · {title}</h2><p className="kita-help">Nur Schichten innerhalb dieses Monats, einschließlich vorhandener Wochenenddienste. Erfasste Pausen werden abgezogen; fehlende Pausendauer, überschneidende oder nicht lesbare Schichten lassen die Nettozeit ungeklärt. Keine Sollstunden- oder Überstundenberechnung.</p>
+      <dl>{month.hours.map(person => <div key={person.id}><dt>{person.name}{person.historical && <small> · nicht mehr im Team</small>}</dt><dd>{person.net === null ? 'ungeklärt' : <>{formatMinutes(person.net)} <small>HH:MM</small></>}</dd></div>)}</dl>
       {!month.hours.length && <p>Keine Mitarbeitenden oder gespeicherten Schichten für diese Auswahl vorhanden.</p>}
     </section>
   </section>

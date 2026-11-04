@@ -49,22 +49,22 @@ export function EmployeesPage() {
       // Re-read P2 for reference validation; never write to its storage key.
       const kita = loadSetup(appStorage)
       if (!kita?.completed) throw new Error('Bitte zuerst die Kita-Einrichtung abschließen.')
-      setStore(saveEmployee(appStorage, employee, kita.groups, editor!.mode))
+      setStore(saveEmployee(appStorage, employee, kita.groups, editor!.mode, editor!.mode === 'update' ? editor!.employee : undefined))
       setEditor(null); setErrors([]); setNotice('Mitarbeiterdaten gespeichert.')
     } catch (error) { setErrors([`Speichern fehlgeschlagen: ${(error as Error).message}`]) }
   }
   function confirmDelete() {
     if (!deleting) return
     try {
-      setStore(deleteEmployee(appStorage, deleting.id))
+      setStore(deleteEmployee(appStorage, deleting.id, deleting))
       setDeleting(null); setErrors([]); setNotice('Mitarbeiter entfernt.')
     } catch (error) { setErrors([`Löschen fehlgeschlagen: ${(error as Error).message}`]) }
   }
 
   return <div className="kita-setup employee-page">
     <div className="page-heading"><p className="eyebrow">caro.</p><h1 id="page-title" tabIndex={-1}>Mitarbeiter</h1><p>Dein Team und seine individuellen Arbeitsregeln.</p></div>
-    <p className="kita-local-note">Lokal in diesem Browser gespeichert · keine Synchronisierung.</p>
-    <details className="employee-policy"><summary>Vorgaben für die spätere Planung</summary><p>Vertragliche Wochenstunden sind später exakt einzuhalten. Urlaub, Krankheit und Feiertage werden mit den geltenden vertraglichen Sollstunden berücksichtigt – ohne Nacharbeit. Gesetzliche Pausen werden automatisch eingeplant und zählen nicht als Arbeitszeit. P3 erfasst nur Daten; es berechnet weder Pausen, Tages-Sollstunden noch Dienstpläne.</p></details>
+    <p className="kita-local-note">Im aktuellen Arbeitsbereich gespeichert. Cloud-Synchronisierung erfolgt nur im eingerichteten Cloud-Arbeitsbereich und auf Knopfdruck.</p>
+    <details className="employee-policy"><summary>Grundlagen deiner Planung</summary><p>Die Planung berücksichtigt erfasste Vertragsstunden, Verfügbarkeiten und Regeln. Abwesenheiten werden nicht als fiktive Arbeitszeit gutgeschrieben. Pausendauern müssen ausdrücklich erfasst werden; Pausenlage und unklare Halbtage bleiben manuell zu prüfen. Es gibt keine automatische gesetzliche Pausenplanung oder pauschale rechtliche Bewertung.</p></details>
     {initial.kitaError && <p role="alert" className="kita-errors">{initial.kitaError}</p>}
     {!groups.length && !initial.kitaError && <p className="kita-card">Bitte zuerst die <a href="#kita">Kita-Einrichtung abschließen</a>. Die Stammgruppen werden von dort übernommen.</p>}
     {initial.employeeError && <p role="alert" className="kita-errors">{initial.employeeError}</p>}

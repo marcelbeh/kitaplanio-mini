@@ -120,3 +120,16 @@ test('Gerenderte Übersicht und Mitarbeiterkarten zeigen gespeicherte Abwesenhei
     assert.deepEqual([...s.data], before, 'Anzeige ändert keine Daten')
   } finally { globalThis.window = oldWindow }
 })
+
+test('Veraltete Abwesenheitsbearbeitung und Löschbestätigung überschreiben keine neueren Einträge', () => {
+  const store=seeded();saveAbsence(store,entry(),'create')
+  const original=loadAbsences(store).absences[0]
+  saveAbsence(store,{...original,type:'sickness'},'update')
+  const before=store.getItem(ABSENCES_KEY)
+  assert.throws(()=>saveAbsence(store,{...original,portion:'am'},'update',original),/inzwischen geändert/)
+  assert.equal(store.getItem(ABSENCES_KEY),before)
+  assert.throws(()=>deleteAbsence(store,original.id,original),/inzwischen geändert/)
+  assert.equal(store.getItem(ABSENCES_KEY),before)
+  const current=loadAbsences(store).absences[0]
+  assert.equal(deleteAbsence(store,current.id,current).absences.length,0)
+})

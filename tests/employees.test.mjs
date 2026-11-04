@@ -173,3 +173,16 @@ test('Gerenderte Karten und Formular verwenden P2-Gruppen, Muss-Regeln und expli
     assert.equal(storage.getItem(EMPLOYEES_KEY), before, 'Anzeige und Formular öffnen speichern keine Änderungen')
   } finally { globalThis.window = oldWindow }
 })
+
+test('Veraltete Mitarbeiterbearbeitung und Löschbestätigung erhalten zwischenzeitliche Änderungen', () => {
+  const store=memory();saveEmployee(store,valid(),groups,'create')
+  const original=loadEmployees(store).employees[0]
+  saveEmployee(store,{...original,name:'Zwischenzeitlich geändert'},groups,'update')
+  const before=store.getItem(EMPLOYEES_KEY)
+  assert.throws(()=>saveEmployee(store,{...original,qualification:'Veralteter Entwurf'},groups,'update',original),/inzwischen geändert/)
+  assert.equal(store.getItem(EMPLOYEES_KEY),before)
+  assert.throws(()=>deleteEmployee(store,original.id,original),/inzwischen geändert/)
+  assert.equal(store.getItem(EMPLOYEES_KEY),before)
+  const current=loadEmployees(store).employees[0]
+  assert.equal(deleteEmployee(store,current.id,current).employees.length,0)
+})

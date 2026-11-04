@@ -1,10 +1,10 @@
-import { STAFFING_LABELS, criticalWindows } from './staffing'
+import { STAFFING_LABELS, criticalWindows, isDefiniteShortage } from './staffing'
 import type { StaffingDay } from './staffing'
 import { formatMinutes } from './schedule'
 
 export function StaffingCard({ day }: { day: StaffingDay }) {
   const details = criticalWindows(day.windows)
-  const shortages = details.filter(window => window.status === 'under').length
+  const shortages = details.filter(isDefiniteShortage).length
   return <div className="staffing-card">
     <span className={`staffing-status staffing-${day.status}`}>{STAFFING_LABELS[day.status]}</span>
     {shortages > 0 && day.status !== 'under' && <small>{shortages} Zeitfenster mit Unterbesetzung</small>}

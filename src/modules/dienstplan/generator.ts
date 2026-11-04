@@ -1,3 +1,5 @@
+import { ACTIVE_KEY } from '../../cloud/workspace'
+import { loadPublications, PUBLICATIONS_KEY } from './publications'
 import { loadSetup, STORAGE_KEY } from '../kita/setup'
 import type { KitaSetup, StorageAccess } from '../kita/setup'
 import { loadEmployees, EMPLOYEES_KEY } from '../mitarbeiter/employees'
@@ -15,15 +17,15 @@ import { candidateRank, compareRanks, dutyCounts, respectsLimits, wishMisses } f
 import type { DutyKind } from './fairness'
 import type { CheckOptions } from './checks'
 
-export type GeneratorContext = { setup: KitaSetup | null; employees: Employee[]; shifts: Shift[]; absences: Absence[]; events: Event[]; snapshot: (string | null)[] }
+export type GeneratorContext = { setup: KitaSetup | null; employees: Employee[]; shifts: Shift[]; absences: Absence[]; events: Event[]; snapshot: (string | null)[]; publishedWeeks?: string[] }
 export type Proposal = { from: string; to: string; shifts: Shift[]; demands: SpecialDemand[]; reasons: string[]; explanations?: string[] }
 export type Draft = { context: GeneratorContext; proposal: Proposal }
 const keys = [STORAGE_KEY, EMPLOYEES_KEY, SHIFTS_KEY, ABSENCES_KEY, EVENTS_KEY]
-const snapshot = (storage: StorageAccess) => keys.map(key => storage.getItem(key))
+const snapshot = (storage: StorageAccess) => [...keys, PUBLICATIONS_KEY, ACTIVE_KEY].map(key => storage.getItem(key))
 const minute = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3))
 export function readGeneratorContext(storage: StorageAccess): GeneratorContext {
   const before = snapshot(storage)
-  const context = { setup: loadSetup(storage), employees: loadEmployees(storage).employees, shifts: loadShifts(storage), absences: loadAbsences(storage).absences, events: loadEvents(storage), snapshot: before }
+  const context = { setup: loadSetup(storage), employees: loadEmployees(storage).employees, shifts: loadShifts(storage), absences: loadAbsences(storage).absences, events: loadEvents(storage), snapshot: before, publishedWeeks: loadPublications(storage).plans.map(plan => plan.from) }
   if (JSON.stringify(before) !== JSON.stringify(snapshot(storage))) throw Error('Daten wurden beim Lesen geändert. Bitte erneut vorschlagen.')
   return context
 }
@@ -45,6 +47,7 @@ export function proposalCoverage(context: GeneratorContext, proposal: Proposal) 
 // Existing chronological heuristic; eligible candidates are ranked by wishes and proportional duty/weekly load.
 export function generateProposal(context: GeneratorContext, date: string, demands: SpecialDemand[] = []): Proposal {
   const week = calendarWeek(date)
+  if (context.publishedWeeks?.includes(week.monday)) throw Error('Diese Woche ist bereits veröffentlicht. Automatische Ergänzungen sind gesperrt; bestehende Schichten und Freigaben bleiben unverändert.')
   const proposal: Proposal = { from: week.monday, to: week.days[6], shifts: [], demands: demands.map(demand => ({ ...demand })), reasons: [] }
   const reasons = new Set<string>(demandErrors(demands, proposal.from, proposal.to, context.setup))
   if (reasons.size || !context.setup?.completed) { reasons.add('Ohne vollständige Einrichtung bzw. gültigen Sonderbedarf werden keine Schichten erfunden.'); proposal.reasons = [...reasons]; return proposal }
@@ -99,6 +102,7 @@ export function generateProposal(context: GeneratorContext, date: string, demand
       }
     }
   }
+  if (proposal.shifts.some(shift => shift.breakMinutes === undefined)) reasons.add('Pausendauer neuer Schichten ist noch nicht erfasst. Nettozeiten und Intervallbesetzung bleiben vorläufig; Pausen bitte ausdrücklich prüfen, auch wenn tatsächlich 0 Minuten vorgesehen sind.')
   proposal.reasons = [...reasons]
   proposal.explanations = [...explanations.values()]
   return proposal
@@ -107,6 +111,9 @@ export function adoptProposal(storage: StorageAccess, draft: Draft, options: Che
   if (!confirmed) throw Error('Die Übernahme muss ausdrücklich bestätigt werden.')
   if (JSON.stringify(snapshot(storage)) !== JSON.stringify(draft.context.snapshot)) throw Error('Der Speicherstand wurde inzwischen geändert. Vorschlag verwerfen und neu erstellen; es wurde nichts gespeichert.')
   const current = readGeneratorContext(storage), proposal = draft.proposal
+  const week = calendarWeek(proposal.from)
+  if (proposal.from !== week.monday || proposal.to !== week.days[6]) throw Error('Der Vorschlag muss genau eine vollständige Kalenderwoche umfassen.')
+  if (current.publishedWeeks?.includes(week.monday)) throw Error('Diese Woche ist bereits veröffentlicht. Übernahme gesperrt.')
   const errors = demandErrors(proposal.demands, proposal.from, proposal.to, current.setup)
   if (errors.length) throw Error(errors.join(' '))
   if (!proposal.shifts.length) throw Error('Keine neuen Schichten zur Übernahme vorhanden.')

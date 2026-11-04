@@ -1,5 +1,6 @@
+import { netTimeLabel } from './presentation'
 import type { PublishedPlan, TeamPlan as TeamPlanData } from './publications'
-import { calendarWeek, dateLabel, formatMinutes, overlappingShifts, workTime } from './schedule'
+import { calendarWeek, dateLabel, formatMinutes, overlappingShifts } from './schedule'
 import './print.css'
 
 export function TeamPlan({ plan, published, preview = false, unavailable = false, proposal = false }: { plan: TeamPlanData; published?: PublishedPlan | null; preview?: boolean; unavailable?: boolean; proposal?: boolean }) {
@@ -14,9 +15,9 @@ export function TeamPlan({ plan, published, preview = false, unavailable = false
           const entries = plan.shifts.filter(shift => shift.employeeId === person.id)
           const daily = days.map(date => entries.filter(shift => shift.date === date))
           const rows = Math.max(1, ...daily.map(items => items.length))
-          return Array.from({ length: rows }, (_, index) => <tr key={`${person.id}:${index}`}><th scope="row">{person.name}{index > 0 && <small>Fortsetzung</small>}{index === rows - 1 && <small>Woche netto: {reliable(entries) ? formatMinutes(workTime(entries).net) : '—'}</small>}</th>{daily.map((items, dayIndex) => {
+          return Array.from({ length: rows }, (_, index) => <tr key={`${person.id}:${index}`}><th scope="row">{person.name}{index > 0 && <small>Fortsetzung</small>}{index === rows - 1 && <small>Woche netto: {reliable(entries) ? netTimeLabel(entries) : '—'}</small>}</th>{daily.map((items, dayIndex) => {
             const shift = items[index]
-            return <td key={days[dayIndex]}>{shift ? <><strong>{shift.start}–{shift.end}</strong><span>{plan.groups.find(group => group.id === shift.groupId)?.name ?? 'Gruppe nicht hinterlegt'}</span><small>Pause: {shift.breakMinutes === undefined ? 'nicht erfasst' : formatMinutes(shift.breakMinutes)} · Netto: {formatMinutes(workTime([shift]).net)}</small></> : index === 0 ? <span>—</span> : null}{index === rows - 1 && <small className="team-day-total">Tag netto: {reliable(items) ? formatMinutes(workTime(items).net) : '—'}</small>}</td>
+            return <td key={days[dayIndex]}>{shift ? <><strong>{shift.start}–{shift.end}</strong><span>{plan.groups.find(group => group.id === shift.groupId)?.name ?? 'Gruppe nicht hinterlegt'}</span><small>Pause: {shift.breakMinutes === undefined ? 'nicht erfasst' : formatMinutes(shift.breakMinutes)} · Netto: {netTimeLabel([shift])}</small></> : index === 0 ? <span>—</span> : null}{index === rows - 1 && <small className="team-day-total">Tag netto: {reliable(items) ? netTimeLabel(items) : '—'}</small>}</td>
           })}</tr>)
         })}
       </tbody></table>

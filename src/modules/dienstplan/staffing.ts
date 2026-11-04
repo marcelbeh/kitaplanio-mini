@@ -16,6 +16,10 @@ export function staffingStatus(required: number | null, actual: number, uncertai
   if (uncertain) return 'check'
   return actual < required ? 'under' : actual > required ? 'over' : 'matched'
 }
+// A shortage is certain even with unknown attendance if the maximum possible count is too small.
+export function isDefiniteShortage(window: StaffingWindow): boolean {
+  return window.status === 'under' || window.status === 'check' && window.required !== null && window.possible < window.required && window.reasons.every(reason => ['Pausendauer nicht erfasst', 'Pause ohne zeitliche Zuordnung', 'Halbtagsabwesenheit ohne Uhrzeit'].includes(reason))
+}
 // Read-only calculation. Quarter-hour grid, additionally split at exact changes; all ranges are [start, end).
 export function calculateStaffing(date: string, setup: KitaSetup | null, shifts: Shift[], absences: Absence[], employees: Employee[], dataUnavailable = false, specialDemands: SpecialDemand[] = []): StaffingDay {
   const unknown = (note: string): StaffingDay => ({ status: 'unconfigured', windows: [], note })
@@ -60,6 +64,7 @@ export function calculateStaffing(date: string, setup: KitaSetup | null, shifts:
         if (away.some(absence => absence.portion === 'full')) continue
         const unclear: string[] = []
         if (away.length) unclear.push('Halbtagsabwesenheit ohne Uhrzeit')
+        if (assignments.some(shift => shift.breakMinutes === undefined)) unclear.push('Pausendauer nicht erfasst')
         if (assignments.some(shift => (shift.breakMinutes ?? 0) > 0)) unclear.push('Pause ohne zeitliche Zuordnung')
         if (!employees.some(person => person.id === id)) unclear.push('Mitarbeiter nicht mehr in den Stammdaten')
         if (!shared && new Set(assignments.map(shift => shift.groupId)).size > 1) unclear.push('Gleichzeitige Zuordnung zu mehreren Gruppen')

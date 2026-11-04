@@ -1,3 +1,4 @@
+import { formatMinutes, workTime } from './schedule'
 import type { KitaSetup } from '../kita/setup'
 import type { Shift } from './schedule'
 export type ShiftPeriod = { kind: 'early' | 'core' | 'late' | 'special'; label: string }
@@ -10,4 +11,9 @@ export function shiftPeriods(shift: Shift, setup: KitaSetup | null): ShiftPeriod
   const periods = [{ kind: 'early', label: 'Früh', start: setup.early.start, end: setup.early.end }, { kind: 'core', label: 'Kern', start: setup.early.end, end: setup.late.start }, { kind: 'late', label: 'Spät', start: setup.late.start, end: setup.late.end }] as const
   const matches = periods.filter(period => /^\d{2}:\d{2}$/.test(period.start) && period.start < period.end && shift.start < period.end && shift.end > period.start)
   return matches.length ? [...matches] : [{ kind: 'special', label: 'Sonderdienst' }]
+}
+
+// Same arithmetic, explicit uncertainty: absent pause duration is not a confirmed zero.
+export function netTimeLabel(shifts: Shift[]): string {
+  return shifts.some(shift => shift.breakMinutes === undefined) ? 'ungeklärt (Pause nicht vollständig erfasst)' : formatMinutes(workTime(shifts).net)
 }

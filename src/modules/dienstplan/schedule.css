@@ -87,3 +87,29 @@ a.schedule-event:hover { text-decoration: underline; }
 .generator-panel li { margin-bottom: 8px; }
 .generator-confirm { border: 1px solid var(--lilac); border-radius: var(--radius-sm); background: var(--lilac-soft); padding: 16px; margin-top: 16px; }
 .schedule-proposed { background: var(--mint-soft); border: 2px dashed var(--success); }
+/* P10: display-only period labels, direct editing and compact grouped day cards. */
+.schedule-controls select { width: 100%; min-width: 0; min-height: 44px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--white); color: var(--aubergine); font: inherit; font-size: 16px; }
+.schedule-shift-action { width: 100%; min-width: 0; min-height: 44px; text-align: left; background: var(--white); font: inherit; color: inherit; cursor: pointer; }
+.schedule-shift-action.schedule-proposed { background: var(--mint-soft); }
+.schedule-shift-action:hover:not(:disabled) { background: var(--lilac-soft); border-color: var(--aubergine); }
+.schedule-shift-action:focus-visible, .schedule-day-tabs button:focus-visible { outline: 2px solid var(--aubergine); outline-offset: 3px; }
+.schedule-shift-action:disabled { cursor: default; opacity: 1; }
+.schedule-edit-hint { color: var(--aubergine); font-size: 11px; text-decoration: underline; }
+.schedule-periods { display: flex; flex-wrap: wrap; gap: 4px; }
+.schedule-period { display: inline-block; padding: 3px 7px; border-radius: 6px; font-size: 10px; font-weight: 600; }
+.schedule-period-early { background: var(--apricot-soft); color: #80501D; }
+.schedule-period-core { background: var(--mint-soft); color: var(--success); }
+.schedule-period-late, .schedule-period-special { background: var(--lilac-soft); color: var(--aubergine); }
+@media (max-width: 760px) {
+  .schedule-day-nav { position: sticky; top: 0; z-index: 4; background: var(--cream); padding: 8px 0; }
+  .schedule-day-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap: 6px; margin-bottom: 16px; }
+  .schedule-day-tabs button { min-width: 0; min-height: 48px; display: grid; padding: 6px 2px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--white); color: var(--aubergine); font: inherit; font-size: 12px; cursor: pointer; }
+  .schedule-day-tabs button[aria-pressed="true"] { background: var(--lilac-soft); border-color: var(--aubergine); }
+  .schedule-person-group { margin-top: 20px; }
+  .schedule-person-group > h3 { font-size: 14px; padding: 10px 12px; background: var(--lilac-soft); border-radius: var(--radius-sm); }
+  .schedule-day-cards .kita-card { padding: 14px; }
+  .schedule-person-name { margin: 0 0 10px; color: var(--aubergine); font-size: 15px; line-height: 1.4; }
+  .schedule-shift { gap: 6px; }
+  .schedule-shift-action > strong { font-size: 17px; }
+  .schedule-details { gap: 8px; }
+}

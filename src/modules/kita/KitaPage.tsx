@@ -150,7 +150,7 @@ export function KitaPage() {
 
   return <div className="kita-setup employee-page">
     <div className="page-heading"><p className="eyebrow">caro.</p><h1 id="page-title" tabIndex={-1}>Kita</h1><p>{editing ? 'Deine Einrichtung im Gespräch – Schritt für Schritt.' : 'Deine Kita auf einen Blick.'}</p></div>
-    <p className="kita-local-note">{flow ? 'Antworten werden automatisch lokal zwischengespeichert. Stammdaten werden erst beim bestätigten Abschluss geändert.' : 'Lokal in diesem Browser gespeichert · keine Synchronisierung.'}</p>
+    <p className="kita-local-note">{flow ? 'Antworten werden automatisch lokal zwischengespeichert. Stammdaten werden erst beim bestätigten Abschluss geändert.' : 'Im aktuellen Arbeitsbereich gespeichert. Cloud-Synchronisierung erfolgt nur im eingerichteten Cloud-Arbeitsbereich und auf Knopfdruck.'}</p>
     {initial.error && <div className="kita-errors" role="alert">{initial.error}</div>}
     {saveError && <div className="kita-errors" role="alert">{saveError}</div>}
     {notice && <p className="kita-success" role="status">{notice}</p>}

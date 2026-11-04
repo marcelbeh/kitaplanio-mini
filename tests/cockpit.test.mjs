@@ -99,3 +99,20 @@ test('Bestehende Konfliktliste verwendet dieselbe Sprungaktion; alte Tag-Callbac
     tree = nodes(PlanChecks(props)); tree.find(node => node.props?.className === 'schedule-edit').props.onClick(); assert.equal(actions.at(-1), date)
   } finally { page.restore() }
 })
+
+test('Gesperrter oder nicht mehr gerenderter Konfliktdienst behält das sichere Tagesziel und öffnet keinen Editor', () => {
+  const page = mountPage(), get = globalThis.document.getElementById
+  try {
+    for (const mobile of [false, true]) {
+      page.mobile(mobile)
+      const tree = page.render(), cockpit = tree.find(node => node.type?.name === 'WeekCockpit')
+      for (const missing of [false, true]) {
+        globalThis.document.getElementById = id => id === shiftAnchor(shift.id, mobile) ? missing ? null : { hasAttribute: () => true, focus() { assert.fail('Gesperrter Dienst darf keinen Fokus erhalten') } } : get(id)
+        cockpit.props.onIssue(issue(`pause:${shift.id}`))
+        assert.equal(page.focused.at(-1), mobile ? 'schedule-day-heading' : `schedule-date-${date}`)
+        assert.equal(page.slots[6], null)
+      }
+    }
+    assert.equal(page.writes, 0)
+  } finally { page.restore() }
+})

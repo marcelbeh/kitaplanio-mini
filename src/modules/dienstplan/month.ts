@@ -1,3 +1,4 @@
+import { netTimeProblem } from './presentation'
 import type { KitaSetup } from '../kita/setup'
 import type { Employee } from '../mitarbeiter/employees'
 import type { Absence } from '../abwesenheiten/absences'
@@ -47,5 +48,5 @@ export function monthOverview(date: string, data: MonthData, filter = '') {
       conflicts: dayIssues.filter(issue => issue.kind === 'conflict').length, hints: dayIssues.filter(issue => issue.kind === 'hint').length,
     }]
   })
-  return { from, to, days, weeks: [...new Set(days.map(day => calendarWeek(day.date).monday))], hours: people.map(person => ({ ...person, net: workTime(shifts.filter(shift => shift.employeeId === person.id)).net })) }
+  return { from, to, days, weeks: [...new Set(days.map(day => calendarWeek(day.date).monday))], hours: people.map(person => ({ ...person, net: data.inspection.problem || data.errors.some(error => error.startsWith('Schichten')) || netTimeProblem(shifts.filter(shift => shift.employeeId === person.id)) ? null : workTime(shifts.filter(shift => shift.employeeId === person.id)).net })) }
 }

@@ -1,4 +1,4 @@
-import { formatMinutes, workTime } from './schedule'
+import { formatMinutes, overlappingShifts, workTime } from './schedule'
 import type { KitaSetup } from '../kita/setup'
 import type { Shift } from './schedule'
 export type ShiftPeriod = { kind: 'early' | 'core' | 'late' | 'special'; label: string }
@@ -13,7 +13,12 @@ export function shiftPeriods(shift: Shift, setup: KitaSetup | null): ShiftPeriod
   return matches.length ? [...matches] : [{ kind: 'special', label: 'Sonderdienst' }]
 }
 
-// Same arithmetic, explicit uncertainty: absent pause duration is not a confirmed zero.
+// Same arithmetic and overlap detector; no second hours calculation or invented zero pause.
+export function netTimeProblem(shifts: Shift[]): string | null {
+  if (shifts.some(shift => shift.breakMinutes === undefined)) return 'ungeklärt (Pause nicht vollständig erfasst)'
+  if (shifts.some(shift => overlappingShifts(shift, shifts).length)) return 'ungeklärt (überschneidende Schichten)'
+  return null
+}
 export function netTimeLabel(shifts: Shift[]): string {
-  return shifts.some(shift => shift.breakMinutes === undefined) ? 'ungeklärt (Pause nicht vollständig erfasst)' : formatMinutes(workTime(shifts).net)
+  return netTimeProblem(shifts) ?? formatMinutes(workTime(shifts).net)
 }

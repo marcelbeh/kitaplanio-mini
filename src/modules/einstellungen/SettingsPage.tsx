@@ -40,8 +40,8 @@ export function SettingsPage() {
         {message && <p role="status">{message}</p>}
         {!blocked && <button className="kita-button secondary" onClick={prepare}>Lokale App zurücksetzen</button>}
         {!blocked && backup && <div role="group" aria-label="Lokalen Reset bestätigen">
-          <p>{AREAS.filter(key => backup.raw[key] !== null).length} von 7 lokalen Datenbereichen gespeichert. Der Reset kann nicht rückgängig gemacht werden. Bitte Sicherung privat aufbewahren; sie enthält personenbezogene Daten. Es werden keine bestehenden Sicherungen gelöscht.</p>
-          <button className="kita-button secondary" onClick={download}>Vollständiges JSON-Backup herunterladen</button>
+          <p>{AREAS.filter(key => backup.raw[key] !== null).length} von 7 lokalen Datenbereichen gespeichert. Der Reset kann nicht rückgängig gemacht werden. Bitte Sicherung privat aufbewahren; sie enthält personenbezogene Daten. Es werden keine bestehenden Sicherungen gelöscht. Gerätelokale Vorlagen gehören nicht zu diesen sieben Bereichen und bleiben beim Reset erhalten. Diese Datei ist eine Reset-Sicherung; es gibt derzeit keinen allgemeinen Wiederherstellungsdialog.</p>
+          <button className="kita-button secondary" onClick={download}>JSON-Backup der sieben Datenbereiche herunterladen</button>
           <label>Gespeicherte Sicherung zur Prüfung auswählen<input type="file" accept=".json,application/json" disabled={!downloaded} onChange={event => {
             const file = event.target.files?.[0]; event.target.value = ''; setProof(null); setPhrase('')
             if (file) void file.text().then(text => { setProof(verifyResetBackup(text, backup)); setMessage('Gespeicherte Sicherung geprüft. Jetzt den Reset ausdrücklich bestätigen.') }).catch(() => setMessage('Sicherung stimmt nicht mit der Vorschau überein. Kein Reset möglich.'))

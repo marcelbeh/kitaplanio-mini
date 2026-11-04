@@ -95,22 +95,25 @@ export function loadEmployees(storage: StorageAccess): EmployeeStore {
   }
   return value as EmployeeStore
 }
-export function saveEmployee(storage: StorageAccess, employee: Employee, groups: GroupReference[], mode: 'create' | 'update'): EmployeeStore {
+export function saveEmployee(storage: StorageAccess, employee: Employee, groups: GroupReference[], mode: 'create' | 'update', expected?: Employee): EmployeeStore {
   if (!employeeShape(employee)) throw new Error('Die Mitarbeiterdaten haben ein ungültiges Format.')
   const errors = validateEmployee(employee, groups)
   if (errors.length) throw new Error(errors.join(' '))
   const store = loadEmployees(storage)
-  const exists = store.employees.some(item => item.id === employee.id)
+  const old = store.employees.find(item => item.id === employee.id)
+  const exists = !!old
   if (mode === 'create' && exists) throw new Error('Diese Mitarbeiter-ID ist bereits vergeben.')
   if (mode === 'update' && !exists) throw new Error('Der Mitarbeiter wurde inzwischen entfernt. Bitte die Übersicht neu laden.')
+  if (expected && JSON.stringify(old) !== JSON.stringify(expected)) throw Error('Die Mitarbeiterdaten wurden inzwischen geändert. Bitte neu laden; es wurde nichts überschrieben.')
   const normalized = { ...employee, name: employee.name.trim(), qualification: employee.qualification.trim(), rules: employee.rules.map(rule => ({ ...rule, description: rule.description.trim() })) }
   const next: EmployeeStore = { version: 1, employees: mode === 'create' ? [...store.employees, normalized] : store.employees.map(item => item.id === employee.id ? normalized : item) }
   storage.setItem(EMPLOYEES_KEY, JSON.stringify(next))
   return next
 }
-export function deleteEmployee(storage: StorageAccess, id: string): EmployeeStore {
+export function deleteEmployee(storage: StorageAccess, id: string, expected?: Employee): EmployeeStore {
   const store = loadEmployees(storage)
   if (!store.employees.some(employee => employee.id === id)) throw new Error('Der Mitarbeiter wurde bereits entfernt. Bitte die Übersicht neu laden.')
+  if (expected && JSON.stringify(store.employees.find(employee => employee.id === id)) !== JSON.stringify(expected)) throw Error('Die Mitarbeiterdaten wurden inzwischen geändert. Bitte Löschung erneut prüfen.')
   const next: EmployeeStore = { version: 1, employees: store.employees.filter(employee => employee.id !== id) }
   storage.setItem(EMPLOYEES_KEY, JSON.stringify(next))
   return next

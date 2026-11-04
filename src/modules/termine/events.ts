@@ -95,21 +95,23 @@ export function loadEvents(storage: StorageAccess): Event[] {
   if (!record(value) || value.version !== 1 || !Array.isArray(value.events) || !value.events.every(eventShape) || value.events.some(item => validateEvent(item).length) || new Set(value.events.map(item => item.id)).size !== value.events.length) throw new Error('Termindaten sind ungültig oder haben eine unbekannte Version. Vorhandene Daten bleiben erhalten.')
   return value.events
 }
-export function saveEvent(storage: StorageAccess, value: Event, mode: 'create' | 'update'): Event[] {
+export function saveEvent(storage: StorageAccess, value: Event, mode: 'create' | 'update', expected?: Event): Event[] {
   if (!eventShape(value)) throw new Error('Ungültiges Terminformat.')
   const errors = validateEvent(value)
   if (errors.length) throw new Error(errors.join(' '))
   const current = loadEvents(storage), exists = current.some(item => item.id === value.id)
   if (mode === 'create' && exists) throw new Error('Diese Termin-ID ist bereits vergeben.')
   if (mode === 'update' && !exists) throw new Error('Der Termin wurde inzwischen entfernt. Bitte neu laden.')
+  if (expected && JSON.stringify(current.find(item => item.id === value.id)) !== JSON.stringify(expected)) throw Error('Der Termin wurde inzwischen geändert. Bitte neu laden; es wurde nichts überschrieben.')
   const normalized = { ...value, title: value.title.trim(), until: value.recurrence === 'once' ? '' : value.until }
   const next = mode === 'create' ? [...current, normalized] : current.map(item => item.id === value.id ? normalized : item)
   storage.setItem(EVENTS_KEY, JSON.stringify({ version: 1, events: next }))
   return next
 }
-export function deleteEvent(storage: StorageAccess, id: string): Event[] {
+export function deleteEvent(storage: StorageAccess, id: string, expected?: Event): Event[] {
   const current = loadEvents(storage)
   if (!current.some(item => item.id === id)) throw new Error('Der Termin wurde bereits entfernt. Bitte neu laden.')
+  if (expected && JSON.stringify(current.find(item => item.id === id)) !== JSON.stringify(expected)) throw Error('Der Termin wurde inzwischen geändert. Bitte Löschung erneut prüfen.')
   const next = current.filter(item => item.id !== id)
   storage.setItem(EVENTS_KEY, JSON.stringify({ version: 1, events: next }))
   return next

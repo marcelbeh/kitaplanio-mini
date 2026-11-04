@@ -33,8 +33,8 @@ test('Dashboard zeigt vorhandene Daten und schreibt keine lokalen Einstellungen'
     assert.match(html, /<strong>1<\/strong><span>Mitarbeiter/)
     assert.match(html, /<strong>1<\/strong><span>Gruppen/)
     assert.match(html, /Eingerichtet/)
-    assert.match(html, /Vorschau/)
-    assert.match(html, /Besetzung und Konflikte werden noch nicht berechnet/)
+    assert.match(html, /Wochenansicht/)
+    assert.match(html, /Im Dienstplan findest du deine Wochenübersicht/); assert.doesNotMatch(html, /Dienstplanung ist noch nicht verfügbar|Noch kein Plan/)
     assert.doesNotMatch(html, /100\s*%|Gut besetzt|Keine Konflikte/)
     assert.deepEqual([...localStorage.values], before)
   } finally { globalThis.window = previous }
@@ -66,5 +66,17 @@ test('Alle vorhandenen Bereiche und mobile Hauptnavigation bleiben erreichbar', 
     assert.match(html, /aria-expanded="false"/)
     assert.match(html, /caro\./)
     assert.doesNotMatch(html, /KitaPlanio (Mini|Lite)/)
+  } finally { globalThis.window = previous }
+})
+
+test('Mitarbeiterhinweise versprechen weder automatische gesetzliche Pausen noch automatische Cloud-Synchronisierung', async () => {
+  const { EmployeesPage } = await loadComponent('src/modules/mitarbeiter/EmployeesPage.tsx')
+  const previous = globalThis.window
+  globalThis.window = { localStorage: storage() }
+  try {
+    const html = renderToStaticMarkup(createElement(EmployeesPage))
+    assert.match(html, /Pausendauern müssen ausdrücklich erfasst werden/)
+    assert.match(html, /auf Knopfdruck/)
+    assert.doesNotMatch(html, /Gesetzliche Pausen werden automatisch eingeplant|Lokal in diesem Browser gespeichert · keine Synchronisierung/)
   } finally { globalThis.window = previous }
 })

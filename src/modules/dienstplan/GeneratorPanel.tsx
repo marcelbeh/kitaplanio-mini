@@ -45,7 +45,7 @@ export function GeneratorPanel({ draft, setup, dates, issues, error, onGenerate,
       </details>
       <div className="kita-actions"><button className="kita-button" disabled={hard > 0 || !draft.proposal.shifts.length} onClick={() => setConfirm(true)}>Vorschlag übernehmen</button><button className="kita-button secondary" onClick={onDiscard}>Verwerfen</button></div>
       {hard > 0 && <p className="kita-help">Harte Konflikte verhindern die Übernahme. Bitte die Prüfmeldungen und offenen Zeitfenster bearbeiten.</p>}
-      {confirm && <div className="generator-confirm" role="group" aria-label="Übernahme bestätigen"><p>{draft.proposal.shifts.length} neue Schichten gemeinsam lokal speichern? {issues.length - hard} Hinweise bleiben zur Entscheidung der Leitung. Bestehende Schichten bleiben unverändert.</p><div className="kita-actions"><button className="kita-button" onClick={onAdopt}>Übernahme bestätigen</button><button className="kita-button secondary" onClick={() => setConfirm(false)}>Zurück zur Vorschau</button></div></div>}
+      {confirm && <div className="generator-confirm" role="group" aria-label="Übernahme bestätigen"><p>{draft.proposal.shifts.length} neue Schichten gemeinsam im aktuellen Arbeitsbereich speichern? {issues.length - hard} Hinweise bleiben zur Entscheidung der Leitung. Bestehende Schichten bleiben unverändert.</p><div className="kita-actions"><button className="kita-button" onClick={onAdopt}>Übernahme bestätigen</button><button className="kita-button secondary" onClick={() => setConfirm(false)}>Zurück zur Vorschau</button></div></div>}
     </>}
   </section>
 }

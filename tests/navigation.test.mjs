@@ -120,3 +120,16 @@ test('Auswertungen sind als eigener lesender Bereich in Navigation und mobil unt
     assert.ok(elements(more).some(node => node.type === 'a' && node.props.href === '#auswertungen'))
   } finally { app.restore() }
 })
+
+test('KI-Assistent ist über Desktop-Navigation, direkten Hash und mobiles Mehr erreichbar', () => {
+  const app = mount('#ki-assistent')
+  try {
+    let nodes = app.render()
+    assert.ok(nodes.some(node => node.type?.name === 'AssistantPage'))
+    assert.ok(nodes.some(node => node.type === 'a' && node.props.href === '#ki-assistent' && node.props['aria-current'] === 'page'))
+    nodes.find(node => node.type === 'button' && node.props['aria-expanded'] !== undefined).props.onClick()
+    nodes = app.render()
+    const panel = nodes.find(node => node.props?.id === 'mobile-more')
+    assert.ok(elements(panel).some(node => node.type === 'a' && node.props.href === '#ki-assistent'))
+  } finally { app.restore() }
+})

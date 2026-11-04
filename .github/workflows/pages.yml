@@ -24,7 +24,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - run: node --test tests/events.test.mjs tests/schedule.test.mjs tests/staffing.test.mjs tests/checks.test.mjs tests/generator.test.mjs tests/fairness.test.mjs tests/publications.test.mjs tests/cloud.test.mjs tests/sync.test.mjs tests/first-import.test.mjs tests/local-reset.test.mjs tests/demo.test.mjs tests/month.test.mjs tests/copy-week.test.mjs tests/navigation.test.mjs tests/templates.test.mjs tests/analytics.test.mjs
+      - run: node --test tests/events.test.mjs tests/schedule.test.mjs tests/staffing.test.mjs tests/checks.test.mjs tests/generator.test.mjs tests/fairness.test.mjs tests/publications.test.mjs tests/cloud.test.mjs tests/sync.test.mjs tests/first-import.test.mjs tests/local-reset.test.mjs tests/demo.test.mjs tests/month.test.mjs tests/copy-week.test.mjs tests/navigation.test.mjs tests/templates.test.mjs tests/analytics.test.mjs tests/assistant.test.mjs
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}

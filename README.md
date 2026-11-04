@@ -136,3 +136,5 @@ node --experimental-strip-types --test tests/absences.test.mjs
 ```
 
 Mac-/iPhone-Bedienung einschließlich Formular, Filter und Löschbestätigung vor Freigabe manuell prüfen. Änderungen erscheinen unter der bestehenden GitHub-Pages-Adresse erst nach Merge und erfolgreichem Deployment.
+
+P15: Optionaler Gemini-Planungsassistent mit pseudonymisierten Einzelanfragen und bestätigter Vorschau. Einrichtung, Grenzen und offene manuelle Tests: [docs/gemini-assistant.md](docs/gemini-assistant.md). Edge Function muss separat und ausdrücklich bereitgestellt werden; keine SQL-Migration.

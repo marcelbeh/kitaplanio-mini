@@ -1,0 +1,6 @@
+project_id = "gnqcuycuolphtfmdunax"
+
+# New publishable keys: verify the user JWT and RLS allowlist inside the function.
+# This does NOT grant anonymous access: caro-assistant rejects missing/invalid/non-member users.
+[functions.caro-assistant]
+verify_jwt = false

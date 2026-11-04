@@ -69,3 +69,25 @@ test('Mehr-Menü gibt bei erneutem Anwählen des aktuellen Bereichs den Fokus an
     assert.deepEqual(app.focused, ['page-title'])
   } finally { app.restore() }
 })
+
+test('Monatsübersicht ist direkt über Navigation erreichbar; Ansichtswechsel aktualisiert die Route', () => {
+  const app = mount('#monatsplan')
+  try {
+    let tree = app.render()
+    assert.equal(app.state[0].id, 'monatsplan')
+    assert.ok(tree.some(node => node.type === 'a' && node.props.href === '#monatsplan'))
+    const schedule = tree.find(node => node.props?.initialView === 'month')
+    assert.ok(schedule)
+    schedule.props.onViewChange('week')
+    assert.equal(window.location.hash, '#dienstplan')
+    app.navigate('#dienstplan'); tree = app.render()
+    assert.ok(tree.some(node => node.props?.initialView === 'week'))
+    tree.find(node => node.props?.initialView === 'week').props.onViewChange('month')
+    assert.equal(window.location.hash, '#monatsplan')
+    app.navigate('#monatsplan'); tree = app.render()
+    tree.find(node => node.type === 'button' && 'aria-expanded' in node.props).props.onClick()
+    tree = app.render()
+    const more = tree.find(node => node.props?.id === 'mobile-more')
+    assert.ok(elements(more).some(node => node.type === 'a' && node.props.href === '#monatsplan'))
+  } finally { app.restore() }
+})

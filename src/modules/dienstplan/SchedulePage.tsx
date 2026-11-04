@@ -1,3 +1,4 @@
+import { CopyWeekPanel } from './CopyWeekPanel'
 import { MonthView } from './MonthView'
 import { shiftPeriods } from './presentation'
 import { appStorage } from '../../cloud/workspace'
@@ -40,9 +41,9 @@ function readSchedule() {
     shifts: read('Schichten', () => loadShifts(appStorage), []), errors,
   }
 }
-export function SchedulePage() {
+export function SchedulePage({ initialView = 'week', onViewChange }: { initialView?: 'week' | 'month'; onViewChange?: (view: 'week' | 'month') => void } = {}) {
   const [storedData, setData] = useState(readSchedule)
-  const [view, setView] = useState<'week' | 'month'>('week')
+  const [view, setView] = useState<'week' | 'month'>(initialView)
   const [today, setToday] = useState(localDate)
   const [selected, setSelected] = useState(localDate)
   const [groupFilter, setGroupFilter] = useState('')
@@ -54,6 +55,7 @@ export function SchedulePage() {
   const [selectedPublication, setSelectedPublication] = useState<PublishedPlan | null>(null)
   const [rulesMessage, setRulesMessage] = useState('')
   const [generatorError, setGeneratorError] = useState('')
+  useEffect(() => { if (!editor && !draft) { setView(initialView); if (initialView === 'month') setSelectedPublication(null) } }, [initialView, editor, draft])
   const data = draft ? { ...draft.context, groups: draft.context.setup?.groups ?? [], errors: [] as string[], shifts: [...draft.context.shifts, ...draft.proposal.shifts], inspection: { entries: [...draft.context.shifts, ...draft.proposal.shifts] } } : storedData
   useEffect(() => {
     const timer = window.setInterval(() => setToday(localDate()), 60_000)
@@ -83,7 +85,7 @@ export function SchedulePage() {
     setSelected(date); setDateError('')
   }
   function showDay(date: string) {
-    select(date); setView('week')
+    select(date); setView('week'); onViewChange?.('week')
     window.requestAnimationFrame(() => {
       const target = document.getElementById(window.matchMedia('(max-width: 760px)').matches ? 'schedule-day-heading' : `schedule-date-${date}`)
       target?.focus(); target?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
@@ -139,7 +141,8 @@ export function SchedulePage() {
     {data.setup?.name === 'DEMO · Kita Sonnengarten' && <p className="kita-lock-note" role="note"><strong>DEMO · ausschließlich fiktive Testdaten.</strong> Sollwerte sind Beispiele; ungeklärte Pausen und halbtägige Abwesenheiten bleiben Prüfhinweise. Keine reguläre Wochenendbetreuung.</p>}
     {data.errors.map(error => <p className="kita-errors" role="alert" key={error}>{error}</p>)}
     {notice && <p className="kita-success" role="status">{notice}</p>}
-    <div className="schedule-view-switch" role="group" aria-label="Dienstplanansicht"><button className="kita-button secondary" aria-pressed={view === 'week'} disabled={!!editor || !!draft} onClick={() => setView('week')}>Woche</button><button className="kita-button secondary" aria-pressed={view === 'month'} disabled={!!editor || !!draft} onClick={() => { setSelectedPublication(null); setView('month') }}>Monat</button></div>
+    {(editor || draft) && <p className="kita-help">Ansichtswechsel erst nach Abschließen oder Verwerfen der offenen Bearbeitung bzw. Vorschau.</p>}
+    <div className="schedule-view-switch" role="group" aria-label="Dienstplanansicht"><button className="kita-button secondary" aria-pressed={view === 'week'} disabled={!!editor || !!draft} onClick={() => { setView('week'); onViewChange?.('week') }}>Woche</button><button className="kita-button secondary" aria-pressed={view === 'month'} disabled={!!editor || !!draft} onClick={() => { setSelectedPublication(null); setView('month'); onViewChange?.('month') }}>Monat</button></div>
     {editor ? <ShiftEditor key={editor.value.id} initial={editor.value} mode={editor.mode} data={data} onDraftSave={draft ? value => {
       if (value.date < draft.proposal.from || value.date > draft.proposal.to) throw Error('Entwurfsschichten müssen in der gewählten Woche liegen.')
       const person = draft.context.employees.find(person => person.id === value.employeeId)
@@ -156,6 +159,7 @@ export function SchedulePage() {
       <p className="kita-help">Der Filter ändert nur die Personenansicht. Personalbedarf, Planprüfung und Freigabe berücksichtigen weiterhin den gesamten Plan.</p>
       {dateError && <p className="kita-errors" role="alert">{dateError}</p>}
     </section>
+    {!draft && !selectedPublication && <CopyWeekPanel key={week.monday} date={selected} unavailable={data.errors.length > 0} onDone={(date, count, skipped) => { setData(readSchedule()); setNotice(`${count} Schichten kopiert, ${skipped} übersprungen. Vorhandene Schichten und Freigaben bleiben unverändert.`); showDay(date) }} />}
     <PublicationPanel plan={printable} selected={selectedPublication} onSelect={setSelectedPublication} issues={issues} locked={!!draft} unavailable={data.errors.length > 0} />
     {!selectedPublication && <>
     <GeneratorPanel draft={draft} setup={data.setup} dates={week.days} issues={issues} error={generatorError} onGenerate={demands => {

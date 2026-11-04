@@ -1,4 +1,5 @@
 import { WORKSPACE_EVENT, appStorage } from '../cloud/workspace'
+import { SettingsPage } from '../modules/einstellungen/SettingsPage'
 import { CloudAccount } from '../cloud/CloudAccount'
 import { useEffect, useRef, useState } from 'react'
 import { modules } from '../modules'
@@ -8,7 +9,6 @@ import { SchedulePage } from '../modules/dienstplan/SchedulePage'
 import { EventsPage } from '../modules/termine/EventsPage'
 import { AbsencesPage } from '../modules/abwesenheiten/AbsencesPage'
 import { DashboardPage } from '../modules/dashboard/DashboardPage'
-import { PlaceholderPage } from '../shared/components/PlaceholderPage'
 import { Icon } from '../shared/components/Icon'
 import { shouldStartInterview } from '../modules/kita/interview'
 
@@ -64,13 +64,13 @@ export function App() {
     <aside className="sidebar">
       <a className="brand" href="#dashboard" aria-label="caro. – Start"><img src="./brand/logo-dark.svg" width="205" height="65" alt="caro." /></a>
       <p className="sidebar-kicker">Dein Kita-Alltag</p>
-      <nav className="desktop-nav" aria-label="Hauptnavigation">{modules.map(module => <a key={module.id} href={`#${module.id}`} aria-current={active.id === module.id ? 'page' : undefined}><Icon name={module.id} /><span>{module.title}</span>{module.id === 'einstellungen' && <span className="nav-preview" title="Vorschau" aria-label="Vorschau" />}</a>)}</nav>
+      <nav className="desktop-nav" aria-label="Hauptnavigation">{modules.map(module => <a key={module.id} href={`#${module.id}`} aria-current={active.id === module.id ? 'page' : undefined}><Icon name={module.id} /><span>{module.title}</span></a>)}</nav>
       <div className="sidebar-bottom"><span className="sidebar-flourish" aria-hidden="true">caro.</span><p>Mit Herz geplant.</p></div>
     </aside>
     <div className="workspace">
       <header className="topbar"><a className="mobile-brand" href="#dashboard" aria-label="caro. – Start"><img src="./brand/logo-light.svg" width="165" height="53" alt="caro." /></a><div className="breadcrumb"><span>caro.</span><span aria-hidden="true">/</span><strong>{active.title}</strong></div><CloudAccount /></header>
       <main key={workspaceRevision} id="main-content" tabIndex={-1}>
-        {active.id === 'dashboard' ? <DashboardPage /> : active.id === 'kita' ? <KitaPage /> : active.id === 'mitarbeiter' ? <EmployeesPage /> : active.id === 'abwesenheiten' ? <AbsencesPage /> : active.id === 'termine' ? <EventsPage /> : active.id === 'dienstplan' ? <SchedulePage /> : <PlaceholderPage title={active.title} description={active.description} />}
+        {active.id === 'dashboard' ? <DashboardPage /> : active.id === 'kita' ? <KitaPage /> : active.id === 'mitarbeiter' ? <EmployeesPage /> : active.id === 'abwesenheiten' ? <AbsencesPage /> : active.id === 'termine' ? <EventsPage /> : active.id === 'dienstplan' ? <SchedulePage /> : <SettingsPage />}
       </main>
       <footer><span>caro.</span><span>Mit Herz geplant.</span></footer>
     </div>

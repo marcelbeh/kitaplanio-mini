@@ -9,6 +9,9 @@ import { StaffingCard } from './StaffingCard'
 import { checkPlan, inspectStoredShifts } from './checks'
 import type { CheckOptions } from './checks'
 import { PlanChecks } from './PlanChecks'
+import { GeneratorPanel } from './GeneratorPanel'
+import { adoptProposal, generateProposal, readGeneratorContext } from './generator'
+import type { Draft } from './generator'
 import { ShiftEditor } from './ShiftEditor'
 import type { Shift } from './schedule'
 import type { SchedulePerson } from './schedule'
@@ -31,13 +34,16 @@ function readSchedule() {
   }
 }
 export function SchedulePage() {
-  const [data, setData] = useState(readSchedule)
+  const [storedData, setData] = useState(readSchedule)
   const [today, setToday] = useState(localDate)
   const [selected, setSelected] = useState(localDate)
   const [dateError, setDateError] = useState('')
   const [editor, setEditor] = useState<{ value: Shift; mode: 'create' | 'update' } | null>(null)
   const [notice, setNotice] = useState('')
   const [checkOptions, setCheckOptions] = useState<CheckOptions>({})
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const [generatorError, setGeneratorError] = useState('')
+  const data = draft ? { ...draft.context, groups: draft.context.setup?.groups ?? [], errors: [] as string[], shifts: [...draft.context.shifts, ...draft.proposal.shifts], inspection: { entries: [...draft.context.shifts, ...draft.proposal.shifts] } } : storedData
   useEffect(() => {
     const timer = window.setInterval(() => setToday(localDate()), 60_000)
     const reload = () => { setData(readSchedule()); setToday(localDate()) }
@@ -46,14 +52,15 @@ export function SchedulePage() {
     return () => { window.clearInterval(timer); window.removeEventListener('storage', reload); window.removeEventListener('focus', reload) }
   }, [])
   const week = calendarWeek(selected)
-  const issues = checkPlan({ from: week.monday, to: week.days[6], setup: data.setup, employees: data.employees, absences: data.absences, inspection: data.inspection, errors: data.errors, options: checkOptions })
+  const issues = checkPlan({ from: week.monday, to: week.days[6], setup: data.setup, employees: data.employees, absences: data.absences, inspection: data.inspection, errors: data.errors, options: checkOptions, specialDemands: draft?.proposal.demands })
   const people = schedulePeople(data.employees, data.shifts, data.absences, week.monday, week.days[6])
   const occurrences = listOccurrences(data.events, week.monday, week.days[6])
-  const staffing = (date: string) => calculateStaffing(date, data.setup, data.shifts, data.absences, data.employees, data.errors.some(error => /^(Mitarbeiterdaten|Schichten|Abwesenheiten)/.test(error)))
-  const days = visibleScheduleDays(week.days, selected, data.shifts, data.absences, occurrences.map(item => item.date))
+  const staffing = (date: string) => calculateStaffing(date, data.setup, data.shifts, data.absences, data.employees, data.errors.some(error => /^(Mitarbeiterdaten|Schichten|Abwesenheiten)/.test(error)), draft?.proposal.demands)
+  const days = visibleScheduleDays(week.days, selected, data.shifts, data.absences, [...occurrences.map(item => item.date), ...(draft?.proposal.demands.map(demand => demand.date) ?? [])])
   const group = (id: string) => data.groups.find(group => group.id === id)?.name ?? (id ? 'Gruppe nicht mehr verfügbar' : 'Keine Gruppe zugeordnet')
   const tone = (id: string) => Math.max(0, data.groups.findIndex(group => group.id === id)) % 4
   function select(date: string) {
+    if (draft && (date < draft.proposal.from || date > draft.proposal.to)) { setDateError('Bitte die Vorschau zuerst übernehmen oder verwerfen, bevor du die Woche wechselst.'); return }
     // Keep navigation and ISO arithmetic in the supported four-digit year range.
     if (!validDate(date) || date < '0002-01-01' || date > '9998-12-31') { setDateError('Bitte ein gültiges Datum zwischen 0002 und 9998 auswählen.'); return }
     setSelected(date); setDateError('')
@@ -75,7 +82,7 @@ export function SchedulePage() {
     const entries = dayEntries(person.id, date, data.shifts, data.absences)
     const total = workTime(entries.shifts)
     return <div className="schedule-details">
-      {entries.shifts.map(shift => <div className="schedule-shift" key={shift.id}><strong>{shift.start}–{shift.end}</strong><span className="schedule-group" data-tone={tone(shift.groupId)}>{group(shift.groupId)}</span><small>Brutto {formatMinutes(workTime([shift]).gross)} · Pause {shift.breakMinutes === undefined ? 'nicht erfasst' : formatMinutes(shift.breakMinutes)} · Netto {formatMinutes(workTime([shift]).net)}</small><button className="schedule-edit" disabled={shiftsUnavailable} onClick={() => { setNotice(''); setEditor({ value: shift, mode: 'update' }) }}>Bearbeiten<span className="schedule-sr-only">: {person.name}, {dateLabel(date)}, {shift.start}–{shift.end}</span></button></div>)}
+      {entries.shifts.map(shift => <div className={`schedule-shift ${draft?.proposal.shifts.some(item => item.id === shift.id) ? 'schedule-proposed' : ''}`} key={shift.id}>{draft && <span className="status">{draft.proposal.shifts.some(item => item.id === shift.id) ? 'Neu · Entwurf' : 'Bestehend · fixiert'}</span>}<strong>{shift.start}–{shift.end}</strong><span className="schedule-group" data-tone={tone(shift.groupId)}>{group(shift.groupId)}</span><small>Brutto {formatMinutes(workTime([shift]).gross)} · Pause {shift.breakMinutes === undefined ? 'nicht erfasst' : formatMinutes(shift.breakMinutes)} · Netto {formatMinutes(workTime([shift]).net)}</small><button className="schedule-edit" disabled={shiftsUnavailable || !!draft && !draft.proposal.shifts.some(item => item.id === shift.id)} onClick={() => { setNotice(''); setEditor({ value: shift, mode: 'update' }) }}>Bearbeiten<span className="schedule-sr-only">: {person.name}, {dateLabel(date)}, {shift.start}–{shift.end}</span></button></div>)}
       {!entries.shifts.length && <><span className="schedule-empty">Keine Schicht eingetragen</span><span className="schedule-group" data-tone={tone(person.groupId)}>{group(person.groupId)}</span></>}
       {!!entries.shifts.length && <small className="schedule-day-total">Tag: {formatMinutes(total.net)} netto</small>}
       <button className="schedule-add" disabled={shiftsUnavailable || !!person.historical} onClick={() => openShift(person, date)}>+ Schicht<span className="schedule-sr-only"> für {person.name}, {dateLabel(date)}</span></button>
@@ -95,7 +102,13 @@ export function SchedulePage() {
     <p className="kita-local-note">Gespeicherte Daten aus diesem Browser. Schichten und Pausen werden lokal gespeichert. Arbeitszeiten werden ohne automatische Pausenabzüge berechnet.</p>
     {data.errors.map(error => <p className="kita-errors" role="alert" key={error}>{error}</p>)}
     {notice && <p className="kita-success" role="status">{notice}</p>}
-    {editor ? <ShiftEditor key={editor.value.id} initial={editor.value} mode={editor.mode} data={data} onCancel={closeEditor} onDone={(date, message) => { setData(readSchedule()); select(date); setNotice(message); closeEditor() }} /> : <>
+    {editor ? <ShiftEditor key={editor.value.id} initial={editor.value} mode={editor.mode} data={data} onDraftSave={draft ? value => {
+      if (value.date < draft.proposal.from || value.date > draft.proposal.to) throw Error('Entwurfsschichten müssen in der gewählten Woche liegen.')
+      const person = draft.context.employees.find(person => person.id === value.employeeId)
+      if (!person || !data.groups.some(group => group.id === value.groupId)) throw Error('Bitte vorhandene Person und Gruppe auswählen.')
+      const normalized = { ...value, employeeName: person.name }
+      setDraft({ ...draft, proposal: { ...draft.proposal, shifts: editor.mode === 'create' ? [...draft.proposal.shifts, normalized] : draft.proposal.shifts.map(shift => shift.id === value.id ? normalized : shift) } }); select(value.date); closeEditor()
+    } : undefined} onDraftDelete={draft ? () => { setDraft({ ...draft, proposal: { ...draft.proposal, shifts: draft.proposal.shifts.filter(shift => shift.id !== editor.value.id) } }); closeEditor() } : undefined} onCancel={closeEditor} onDone={(date, message) => { setData(readSchedule()); select(date); setNotice(message); closeEditor() }} /> : <>
     <section className="kita-card schedule-controls" aria-label="Dienstplan-Zeitraum">
       <div className="schedule-week-title" role="status"><h2>KW {week.week} · {week.year}</h2><p>{dateLabel(week.monday)}–{dateLabel(days[days.length - 1])}</p></div>
       <div className="schedule-week-nav" aria-label="Wochennavigation"><button className="kita-button secondary" onClick={() => select(addDays(selected, -7))} aria-label="Vorherige Kalenderwoche">← Woche</button><button className="kita-button secondary" onClick={() => { const now = localDate(); setToday(now); select(now) }}>Heute</button><button className="kita-button secondary" onClick={() => select(addDays(selected, 7))} aria-label="Nächste Kalenderwoche">Woche →</button></div>
@@ -103,6 +116,14 @@ export function SchedulePage() {
       <p className="kita-help">Wähle ein Datum, um die zugehörige Kalenderwoche zu öffnen.</p>
       {dateError && <p className="kita-errors" role="alert">{dateError}</p>}
     </section>
+    <GeneratorPanel draft={draft} setup={data.setup} dates={week.days} issues={issues} error={generatorError} onGenerate={demands => {
+      try { const context = readGeneratorContext(window.localStorage); setDraft({ context, proposal: generateProposal(context, selected, demands) }); setGeneratorError(''); setNotice('') }
+      catch (error) { setGeneratorError((error as Error).message) }
+    }} onDiscard={() => { setDraft(null); setData(readSchedule()); setGeneratorError(''); setNotice('Vorschau verworfen. Es wurden keine Schichten gespeichert.') }} onAdopt={() => {
+      if (!draft) return
+      try { const count = adoptProposal(window.localStorage, draft, checkOptions, true); setDraft(null); setData(readSchedule()); setGeneratorError(''); setNotice(`${count} neue Schichten übernommen.`) }
+      catch (error) { setGeneratorError((error as Error).message) }
+    }} />
     <PlanChecks issues={issues} options={checkOptions} onOptions={setCheckOptions} onSelect={date => {
       select(date)
       window.requestAnimationFrame(() => {

@@ -3,6 +3,7 @@ import type { Employee, Weekday } from '../mitarbeiter/employees'
 import type { Absence } from '../abwesenheiten/absences'
 import type { Shift } from './schedule'
 import { SHIFTS_KEY, addDays, formatMinutes, validDate, validateShift, workTime } from './schedule'
+import type { SpecialDemand } from './staffing'
 import { calculateStaffing, criticalWindows } from './staffing'
 
 export type CheckOptions = { maxShiftMinutes?: number; minRestMinutes?: number }
@@ -26,7 +27,7 @@ function shape(value: unknown): value is Shift {
   const record = value as Record<string, unknown>
   return ['id', 'employeeId', 'groupId', 'date', 'start', 'end'].every(key => typeof record[key] === 'string') && (record.breakMinutes === undefined || typeof record.breakMinutes === 'number') && (record.employeeName === undefined || typeof record.employeeName === 'string')
 }
-export function checkPlan(input: { from: string; to: string; setup: KitaSetup | null; employees: Employee[]; absences: Absence[]; inspection: ShiftInspection; errors?: string[]; options?: CheckOptions }): PlanIssue[] {
+export function checkPlan(input: { from: string; to: string; setup: KitaSetup | null; employees: Employee[]; absences: Absence[]; inspection: ShiftInspection; errors?: string[]; options?: CheckOptions; specialDemands?: SpecialDemand[] }): PlanIssue[] {
   const { from, to, setup, employees, absences, inspection, options = {} } = input
   const issues = new Map<string, PlanIssue>()
   const add = (id: string, kind: PlanIssue['kind'], date: string, person: string, cause: string, correction: string) => issues.set(id, { id, kind, date, person, cause, correction })
@@ -97,7 +98,7 @@ export function checkPlan(input: { from: string; to: string; setup: KitaSetup | 
     if (rules.length) add(`text:${person.id}`, 'hint', from, person.name, `Freitextregeln manuell prüfen: ${rules.map(rule => `${rule.type === 'must' ? 'Muss' : 'Wunsch'}: ${rule.description}`).join('; ')}`, 'Freitext wird nicht automatisch interpretiert; hinterlegte Regeln mit dem Plan abgleichen.')
   }
   for (let date = from; date <= to; date = addDays(date, 1)) {
-    const day = calculateStaffing(date, setup, shifts, absences, employees, sourceUnavailable)
+    const day = calculateStaffing(date, setup, shifts, absences, employees, sourceUnavailable, input.specialDemands)
     if (day.status === 'unconfigured' || day.status === 'unspecified' && weekShifts.some(shift => shift.date === date)) add(`demand:${date}`, 'hint', date, 'Betreuungsbereiche', day.status === 'unspecified' ? 'Bedarf für Wochenend-Sonderdienst nicht festgelegt.' : 'Soll-Besetzung nicht vollständig konfiguriert.', 'Konkrete Bedarfswerte fachlich festlegen; es werden keine Personalvorgaben erfunden.')
     for (const window of criticalWindows(day.windows)) {
       if (window.status === 'under') add(`staff:${date}:${window.area}:${window.start}`, 'conflict', date, window.name, `${formatMinutes(window.start)}–${formatMinutes(window.end)}: Mindestbesetzung unterschritten (Soll ${window.required}, Ist ${window.actual}).`, 'Besetzung dieses Bereichs oder ausdrücklich konfigurierte Sollvorgabe prüfen.')

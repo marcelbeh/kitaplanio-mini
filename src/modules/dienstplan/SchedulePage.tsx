@@ -1,3 +1,7 @@
+import { WeekCockpit } from './WeekCockpit'
+import { issueShift, shiftAnchor } from './cockpit'
+import type { PlanIssue } from './checks'
+import './cockpit.css'
 import { TemplatePanel } from './TemplatePanel'
 import { CopyWeekPanel } from './CopyWeekPanel'
 import { MonthView } from './MonthView'
@@ -96,6 +100,20 @@ export function SchedulePage({ initialView = 'week', initialSection, onViewChang
       target?.focus(); target?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     })
   }
+  function jumpTo(id: string, openChecks = false) {
+    if (openChecks) { const details = document.getElementById('schedule-checks-details') as HTMLDetailsElement | null; if (details) details.open = true }
+    const target = document.getElementById(id)
+    target?.focus(); target?.scrollIntoView({ block: 'start' })
+  }
+  function showIssue(issue: PlanIssue) {
+    const shift = issueShift(issue, data.shifts)
+    setGroupFilter('')
+    showDay(issue.date)
+    if (shift) window.requestAnimationFrame(() => {
+      const target = document.getElementById(shiftAnchor(shift.id, window.matchMedia('(max-width: 760px)').matches))
+      if (target && !target.hasAttribute('disabled')) { target.focus(); target.scrollIntoView({ block: 'center', inline: 'nearest' }) }
+    })
+  }
   const shiftsUnavailable = data.errors.some(error => error.startsWith('Schichten'))
   function openShift(person: SchedulePerson, date: string) {
     setNotice('')
@@ -109,13 +127,13 @@ export function SchedulePage({ initialView = 'week', initialSection, onViewChang
     const entries = data.shifts.filter(shift => shift.employeeId === person.id && shift.date >= week.monday && shift.date <= week.days[6])
     return <small className="schedule-week-total">Woche (Mo–So) · Netto: {netTimeLabel(entries)}</small>
   }
-  function personDetails(person: SchedulePerson, date: string) {
+  function personDetails(person: SchedulePerson, date: string, mobile: boolean) {
     const entries = dayEntries(person.id, date, data.shifts, data.absences)
     return <div className="schedule-details">
       {entries.shifts.map(shift => {
         const proposed = draft?.proposal.shifts.some(item => item.id === shift.id) ?? false
         const fixed = !!draft && !proposed
-        return <button type="button" className={`schedule-shift schedule-shift-action ${proposed ? 'schedule-proposed' : ''}`} key={shift.id} disabled={shiftsUnavailable || fixed} onClick={() => { setNotice(''); setEditor({ value: shift, mode: 'update' }) }}>
+        return <button type="button" id={shiftAnchor(shift.id, mobile)} className={`schedule-shift schedule-shift-action ${proposed ? 'schedule-proposed' : ''}`} key={shift.id} disabled={shiftsUnavailable || fixed} onClick={() => { setNotice(''); setEditor({ value: shift, mode: 'update' }) }}>
           <span className="schedule-sr-only">Schicht bearbeiten: {person.name}, {dateLabel(date)}. </span>
           {draft && <span className="status">{proposed ? 'Neu · Entwurf' : 'Bestehend · fixiert'}</span>}
           <strong>{shift.start}–{shift.end}</strong>
@@ -163,6 +181,7 @@ export function SchedulePage({ initialView = 'week', initialSection, onViewChang
       <p className="kita-help">Der Filter ändert nur die Personenansicht. Personalbedarf, Planprüfung und Freigabe berücksichtigen weiterhin den gesamten Plan.</p>
       {dateError && <p className="kita-errors" role="alert">{dateError}</p>}
     </section>
+    {!selectedPublication && <WeekCockpit days={days} selected={selected} shifts={data.shifts} absences={data.absences} occurrences={occurrences} issues={issues} staffing={staffing} preview={!!draft} unavailable={data.errors.length > 0} onDay={showDay} onIssue={showIssue} onChecks={() => jumpTo('schedule-checks', true)} onPublication={() => jumpTo('schedule-publication')} onPrint={() => jumpTo('schedule-print-source')} />}
     {!draft && !selectedPublication && <TemplatePanel date={selected} unavailable={data.errors.length > 0} onDone={(date, count, skipped) => { setData(readSchedule()); setNotice(`${count} Vorlagenschichten übernommen, ${skipped} übersprungen.`); showDay(date) }} />}
     {!draft && !selectedPublication && <CopyWeekPanel key={week.monday} date={selected} unavailable={data.errors.length > 0} onDone={(date, count, skipped) => { setData(readSchedule()); setNotice(`${count} Schichten kopiert, ${skipped} übersprungen. Vorhandene Schichten und Freigaben bleiben unverändert.`); showDay(date) }} />}
     <PublicationPanel plan={printable} selected={selectedPublication} onSelect={setSelectedPublication} issues={issues} locked={!!draft} unavailable={data.errors.length > 0} />
@@ -178,7 +197,7 @@ export function SchedulePage({ initialView = 'week', initialSection, onViewChang
     <PlanChecks issues={issues} options={checkOptions} onOptions={value => { setCheckOptions(value); setRulesMessage('Noch nicht gespeichert.') }} limitsLocked={!!draft} rulesMessage={rulesMessage} onSaveOptions={() => {
       try { savePlanningLimits(appStorage, checkOptions); setData(readSchedule()); setRulesMessage('Grenzen lokal gespeichert. Leere Grenzen bleiben deaktiviert.') }
       catch (error) { setRulesMessage((error as Error).message) }
-    }} onSelect={showDay} />
+    }} onSelect={showDay} onIssue={showIssue} />
     {!data.employees.length && !data.errors.length && <section className="kita-card"><h2>Dein Team fehlt noch</h2><p>Lege zuerst Mitarbeitende an. Bereits gespeicherte Einträge bleiben sichtbar.</p><a className="kita-button secondary" href="#mitarbeiter">Zum Team</a></section>}
     {!shiftsUnavailable && !data.shifts.some(shift => shift.date >= week.monday && shift.date <= week.days[6]) && <p className="kita-help">Für diese Woche sind keine Schichten eingetragen. Abwesenheiten und Sondertermine siehst du unabhängig davon.</p>}
     <div className="schedule-legend" aria-label="Legende"><span className="schedule-group" data-tone="0">Gruppe</span><span className="schedule-absence">Abwesenheit</span><span className="schedule-event">Sondertermin</span><span className="schedule-period schedule-period-early">Früh</span><span className="schedule-period schedule-period-core">Kern</span><span className="schedule-period schedule-period-late">Spät</span><span>Zeiten gemäß Kita-Konfiguration · Schicht antippen zum Bearbeiten</span></div>
@@ -188,7 +207,7 @@ export function SchedulePage({ initialView = 'week', initialSection, onViewChang
         <table className="schedule-table" style={days.length > 5 ? { minWidth: 1240 } : undefined}><caption className="schedule-sr-only">Dienstplan KW {week.week}, {week.year}</caption><thead><tr><th scope="col">Mitarbeitende</th>{days.map(date => <th scope="col" key={date} id={`schedule-date-${date}`} tabIndex={-1} aria-current={date === today ? 'date' : undefined}>{dateLabel(date, true)}{date === today && <span className="schedule-today">Heute</span>}</th>)}</tr></thead><tbody>
           <tr><th scope="row">Personalbedarf</th>{days.map(date => <td key={date}><StaffingCard day={staffing(date)} /></td>)}</tr>
           <tr className="schedule-event-row"><th scope="row">Sondertermine</th>{days.map(date => <td key={date}>{eventsForDay(date)}</td>)}</tr>
-          {visiblePeople.map(person => <tr key={person.id}><th scope="row">{person.name}{weeklySummary(person)}{person.historical && <small>Nicht mehr im Team</small>}</th>{days.map(date => <td key={date}>{personDetails(person, date)}</td>)}</tr>)}
+          {visiblePeople.map(person => <tr key={person.id}><th scope="row">{person.name}{weeklySummary(person)}{person.historical && <small>Nicht mehr im Team</small>}</th>{days.map(date => <td key={date}>{personDetails(person, date, false)}</td>)}</tr>)}
         </tbody></table>
       </div>
     </div>
@@ -198,7 +217,7 @@ export function SchedulePage({ initialView = 'week', initialSection, onViewChang
       <section className="kita-card"><h3>Personalbedarf</h3><StaffingCard day={staffing(selected)} /></section>
       <section className="kita-card"><h3>Sondertermine</h3>{eventsForDay(selected)}</section>
       {personGroups.map(groupId => <section className="schedule-person-group" key={groupId} aria-label={group(groupId)}><h3>{group(groupId)} · {visiblePeople.filter(person => person.groupId === groupId).length} Mitarbeitende</h3>
-        <div className="schedule-day-cards">{visiblePeople.filter(person => person.groupId === groupId).map(person => <article className="kita-card" key={person.id}><h4 className="schedule-person-name">{person.name}</h4>{weeklySummary(person)}{person.historical && <p className="kita-help">Nicht mehr im Team</p>}{personDetails(person, selected)}</article>)}</div>
+        <div className="schedule-day-cards">{visiblePeople.filter(person => person.groupId === groupId).map(person => <article className="kita-card" key={person.id}><h4 className="schedule-person-name">{person.name}</h4>{weeklySummary(person)}{person.historical && <p className="kita-help">Nicht mehr im Team</p>}{personDetails(person, selected, true)}</article>)}</div>
       </section>)}
       {!visiblePeople.length && <p className="kita-help">Keine Mitarbeitenden oder gespeicherten Schichten für diese Auswahl vorhanden.</p>}
     </section>

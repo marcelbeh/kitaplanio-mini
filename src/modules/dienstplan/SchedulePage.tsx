@@ -1,3 +1,4 @@
+import { MonthView } from './MonthView'
 import { shiftPeriods } from './presentation'
 import { appStorage } from '../../cloud/workspace'
 import { useEffect, useState } from 'react'
@@ -41,6 +42,7 @@ function readSchedule() {
 }
 export function SchedulePage() {
   const [storedData, setData] = useState(readSchedule)
+  const [view, setView] = useState<'week' | 'month'>('week')
   const [today, setToday] = useState(localDate)
   const [selected, setSelected] = useState(localDate)
   const [groupFilter, setGroupFilter] = useState('')
@@ -79,6 +81,13 @@ export function SchedulePage() {
     // Keep navigation and ISO arithmetic in the supported four-digit year range.
     if (!validDate(date) || date < '0002-01-01' || date > '9998-12-31') { setDateError('Bitte ein gültiges Datum zwischen 0002 und 9998 auswählen.'); return }
     setSelected(date); setDateError('')
+  }
+  function showDay(date: string) {
+    select(date); setView('week')
+    window.requestAnimationFrame(() => {
+      const target = document.getElementById(window.matchMedia('(max-width: 760px)').matches ? 'schedule-day-heading' : `schedule-date-${date}`)
+      target?.focus(); target?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    })
   }
   const shiftsUnavailable = data.errors.some(error => error.startsWith('Schichten'))
   function openShift(person: SchedulePerson, date: string) {
@@ -130,13 +139,14 @@ export function SchedulePage() {
     {data.setup?.name === 'DEMO · Kita Sonnengarten' && <p className="kita-lock-note" role="note"><strong>DEMO · ausschließlich fiktive Testdaten.</strong> Sollwerte sind Beispiele; ungeklärte Pausen und halbtägige Abwesenheiten bleiben Prüfhinweise. Keine reguläre Wochenendbetreuung.</p>}
     {data.errors.map(error => <p className="kita-errors" role="alert" key={error}>{error}</p>)}
     {notice && <p className="kita-success" role="status">{notice}</p>}
+    <div className="schedule-view-switch" role="group" aria-label="Dienstplanansicht"><button className="kita-button secondary" aria-pressed={view === 'week'} disabled={!!editor || !!draft} onClick={() => setView('week')}>Woche</button><button className="kita-button secondary" aria-pressed={view === 'month'} disabled={!!editor || !!draft} onClick={() => { setSelectedPublication(null); setView('month') }}>Monat</button></div>
     {editor ? <ShiftEditor key={editor.value.id} initial={editor.value} mode={editor.mode} data={data} onDraftSave={draft ? value => {
       if (value.date < draft.proposal.from || value.date > draft.proposal.to) throw Error('Entwurfsschichten müssen in der gewählten Woche liegen.')
       const person = draft.context.employees.find(person => person.id === value.employeeId)
       if (!person || !data.groups.some(group => group.id === value.groupId)) throw Error('Bitte vorhandene Person und Gruppe auswählen.')
       const normalized = { ...value, employeeName: person.name }
       setDraft({ ...draft, proposal: { ...draft.proposal, shifts: editor.mode === 'create' ? [...draft.proposal.shifts, normalized] : draft.proposal.shifts.map(shift => shift.id === value.id ? normalized : shift) } }); select(value.date); closeEditor()
-    } : undefined} onDraftDelete={draft ? () => { setDraft({ ...draft, proposal: { ...draft.proposal, shifts: draft.proposal.shifts.filter(shift => shift.id !== editor.value.id) } }); closeEditor() } : undefined} onCancel={closeEditor} onDone={(date, message) => { setData(readSchedule()); select(date); setNotice(message); closeEditor() }} /> : <>
+    } : undefined} onDraftDelete={draft ? () => { setDraft({ ...draft, proposal: { ...draft.proposal, shifts: draft.proposal.shifts.filter(shift => shift.id !== editor.value.id) } }); closeEditor() } : undefined} onCancel={closeEditor} onDone={(date, message) => { setData(readSchedule()); select(date); setNotice(message); closeEditor() }} /> : view === 'month' ? <MonthView date={selected} data={{ ...data, options: checkOptions }} filter={filter} onFilter={setGroupFilter} onDate={select} onOpenDay={showDay} /> : <>
     <section className="kita-card schedule-controls" aria-label="Dienstplan-Zeitraum">
       <div className="schedule-week-title" role="status"><h2>KW {week.week} · {week.year}</h2><p>{dateLabel(week.monday)}–{dateLabel(days[days.length - 1])}</p></div>
       <div className="schedule-week-nav" aria-label="Wochennavigation"><button className="kita-button secondary" onClick={() => select(addDays(selected, -7))} aria-label="Vorherige Kalenderwoche">← Woche</button><button className="kita-button secondary" onClick={() => { const now = localDate(); setToday(now); select(now) }}>Heute</button><button className="kita-button secondary" onClick={() => select(addDays(selected, 7))} aria-label="Nächste Kalenderwoche">Woche →</button></div>
@@ -159,13 +169,7 @@ export function SchedulePage() {
     <PlanChecks issues={issues} options={checkOptions} onOptions={value => { setCheckOptions(value); setRulesMessage('Noch nicht gespeichert.') }} limitsLocked={!!draft} rulesMessage={rulesMessage} onSaveOptions={() => {
       try { savePlanningLimits(appStorage, checkOptions); setData(readSchedule()); setRulesMessage('Grenzen lokal gespeichert. Leere Grenzen bleiben deaktiviert.') }
       catch (error) { setRulesMessage((error as Error).message) }
-    }} onSelect={date => {
-      select(date)
-      window.requestAnimationFrame(() => {
-        const target = document.getElementById(window.matchMedia('(max-width: 760px)').matches ? 'schedule-day-heading' : `schedule-date-${date}`)
-        target?.focus(); target?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-      })
-    }} />
+    }} onSelect={showDay} />
     {!data.employees.length && !data.errors.length && <section className="kita-card"><h2>Dein Team fehlt noch</h2><p>Lege zuerst Mitarbeitende an. Bereits gespeicherte Einträge bleiben sichtbar.</p><a className="kita-button secondary" href="#mitarbeiter">Zum Team</a></section>}
     {!shiftsUnavailable && !data.shifts.some(shift => shift.date >= week.monday && shift.date <= week.days[6]) && <p className="kita-help">Für diese Woche sind keine Schichten eingetragen. Abwesenheiten und Sondertermine siehst du unabhängig davon.</p>}
     <div className="schedule-legend" aria-label="Legende"><span className="schedule-group" data-tone="0">Gruppe</span><span className="schedule-absence">Abwesenheit</span><span className="schedule-event">Sondertermin</span><span className="schedule-period schedule-period-early">Früh</span><span className="schedule-period schedule-period-core">Kern</span><span className="schedule-period schedule-period-late">Spät</span><span>Zeiten gemäß Kita-Konfiguration · Schicht antippen zum Bearbeiten</span></div>
@@ -191,6 +195,6 @@ export function SchedulePage() {
     </section>
     </>}
     </>}
-    <TeamPlan plan={selectedPublication ?? printable} published={selectedPublication} preview={!!selectedPublication} unavailable={!selectedPublication && data.errors.length > 0} proposal={!!draft} />
+    {view === 'week' && <TeamPlan plan={selectedPublication ?? printable} published={selectedPublication} preview={!!selectedPublication} unavailable={!selectedPublication && data.errors.length > 0} proposal={!!draft} />}
   </div>
 }

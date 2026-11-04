@@ -1,0 +1,34 @@
+.analytics-page { max-width: none; min-width: 0; }
+.analytics-controls h2 { margin: 12px 0 4px; }
+.analytics-controls select { width: 100%; min-width: 0; min-height: 46px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--white); color: var(--aubergine); font: inherit; font-size: 16px; }
+.analytics-controls [aria-pressed="true"] { background: var(--lilac-soft); color: var(--aubergine); }
+.analytics-values { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
+.analytics-values > div { min-width: 0; }
+.analytics-values dt { font-size: 12px; color: var(--muted); }
+.analytics-values dd { margin: 4px 0 0; font-size: 20px; font-weight: 650; color: var(--aubergine); font-variant-numeric: tabular-nums; }
+.analytics-values dd small { font-size: 10px; font-weight: 400; }
+.analytics-context { display: grid; gap: 4px; margin-top: 10px; font-size: 11px; font-weight: 400; color: var(--muted); }
+.analytics-fairness { background: var(--lilac-soft); }
+.analytics-fairness summary { min-height: 44px; padding: 10px 0; cursor: pointer; color: var(--aubergine); }
+.analytics-fairness li { margin: 12px 0; font-size: 12px; }
+.analytics-desktop { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--white); }
+.analytics-table { width: 100%; min-width: 740px; border-collapse: collapse; font-size: 13px; }
+.analytics-table caption { text-align: left; padding: 16px; font-weight: 600; color: var(--aubergine); }
+.analytics-table th, .analytics-table td { padding: 14px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.analytics-table thead, .analytics-table tfoot { background: var(--lilac-soft); }
+.analytics-table tbody th { width: 35%; }
+.analytics-table td { font-variant-numeric: tabular-nums; }
+.analytics-mobile { display: none; }
+@media (max-width: 760px) {
+  .analytics-desktop { display: none; }
+  .analytics-mobile { display: grid; gap: 12px; }
+  .analytics-mobile .kita-card { margin: 0; padding: 16px; min-width: 0; }
+  .analytics-person { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+  .analytics-page .kita-card { padding: 16px; }
+  .analytics-values { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .analytics-values > div:first-child { grid-column: 1 / -1; }
+  .analytics-values dd { font-size: 18px; }
+  .analytics-values dt { font-size: 10px; overflow-wrap: anywhere; }
+  .analytics-controls .kita-actions { gap: 6px; }
+  .analytics-controls .kita-button { min-height: 44px; padding: 10px 12px; }
+}

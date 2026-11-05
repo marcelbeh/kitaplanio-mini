@@ -135,3 +135,15 @@ test('Wochenenddienste: Sichtbarkeit durch Schicht, Termin oder Auswahl; Zeiten 
   assert.equal(formatMinutes(workTime([shift, saturday, sunday]).net), '12:15')
   assert.deepEqual(visibleScheduleDays(dates, dates[0], [{ ...shift, date: '2027-01-16' }], [], ['2027-01-17']), dates.slice(0, 5))
 })
+
+test('Parallel ergänzte Schichten anderer Tage bleiben bei Speichern und Löschen erhalten', () => {
+  const base=seeded();saveShift(base,shift,'create')
+  const source=base.getItem(SHIFTS_KEY),original=loadShifts(base)[0]
+  const concurrent=JSON.stringify({version:1,shifts:[original,{...original,id:'concurrent',date:'2027-01-05'}]})
+  for(const remove of [false,true]) {
+    base.setItem(SHIFTS_KEY,source);let injected=false,writes=0
+    const raced={getItem(key){const raw=base.getItem(key);if(key===SHIFTS_KEY&&!injected){injected=true;base.setItem(key,concurrent)}return raw},setItem(key,value){writes++;base.setItem(key,value)}}
+    assert.throws(()=>remove?deleteShift(raced,original):saveShift(raced,{...original,breakMinutes:45},'update',original),/inzwischen geändert/)
+    assert.equal(writes,0);assert.equal(base.getItem(SHIFTS_KEY),concurrent)
+  }
+})

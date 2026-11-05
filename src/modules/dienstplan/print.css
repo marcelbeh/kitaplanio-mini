@@ -23,16 +23,19 @@
   .schedule-page { max-width: none; width: 100%; }
   .schedule-page > :not(.team-plan) { display: none !important; }
   .team-plan { display: block !important; width: 100%; margin: 0; overflow: visible; }
-  .team-plan h2 { font-size: 15pt; margin: 6pt 0; }
-  .team-plan p { font-size: 9pt; }
-  .team-brand { font-size: 16pt; }
+  .team-plan h2 { font-size: 12pt; margin: 3pt 0; }
+  .team-plan p { font-size: 8pt; }
+  .team-plan header p { margin: 2pt 0; }
+  .team-brand { font-size: 13pt; }
   .team-version { font-weight: bold; }
-  .team-plan table { width: 100%; min-width: 0; font-size: 8pt; }
-  .team-plan th, .team-plan td { border-color: #A79AA8; padding: 5pt; line-height: 1.4; }
+  .team-plan table { width: 100%; min-width: 0; font-size: 7.5pt; }
+  .team-plan th, .team-plan td { border-color: #A79AA8; padding: 2pt; line-height: 1.2; }
   .team-plan thead { display: table-header-group; background: #F1EAF8; }
   .team-plan tr { break-inside: avoid; page-break-inside: avoid; }
   .team-plan th { position: static; }
-  .team-plan small { font-size: 7pt; }
+  .team-plan small { font-size: 6.5pt; }
+  .team-plan .team-day-total { margin-top: 2pt; }
+  .team-plan .team-footnote { margin: 4pt 0 0; font-size: 7pt; }
   .team-plan header { break-inside: avoid; }
   .team-plan button, .team-plan input, .team-plan select { display: none !important; }
 }

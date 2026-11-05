@@ -99,6 +99,7 @@ export function saveEmployee(storage: StorageAccess, employee: Employee, groups:
   if (!employeeShape(employee)) throw new Error('Die Mitarbeiterdaten haben ein ungültiges Format.')
   const errors = validateEmployee(employee, groups)
   if (errors.length) throw new Error(errors.join(' '))
+  const source = storage.getItem(EMPLOYEES_KEY)
   const store = loadEmployees(storage)
   const old = store.employees.find(item => item.id === employee.id)
   const exists = !!old
@@ -107,14 +108,17 @@ export function saveEmployee(storage: StorageAccess, employee: Employee, groups:
   if (expected && JSON.stringify(old) !== JSON.stringify(expected)) throw Error('Die Mitarbeiterdaten wurden inzwischen geändert. Bitte neu laden; es wurde nichts überschrieben.')
   const normalized = { ...employee, name: employee.name.trim(), qualification: employee.qualification.trim(), rules: employee.rules.map(rule => ({ ...rule, description: rule.description.trim() })) }
   const next: EmployeeStore = { version: 1, employees: mode === 'create' ? [...store.employees, normalized] : store.employees.map(item => item.id === employee.id ? normalized : item) }
+  if (storage.getItem(EMPLOYEES_KEY) !== source) throw Error('Der Datenbestand wurde inzwischen geändert. Bitte neu laden; keine parallelen Änderungen werden überschrieben.')
   storage.setItem(EMPLOYEES_KEY, JSON.stringify(next))
   return next
 }
 export function deleteEmployee(storage: StorageAccess, id: string, expected?: Employee): EmployeeStore {
+  const source = storage.getItem(EMPLOYEES_KEY)
   const store = loadEmployees(storage)
   if (!store.employees.some(employee => employee.id === id)) throw new Error('Der Mitarbeiter wurde bereits entfernt. Bitte die Übersicht neu laden.')
   if (expected && JSON.stringify(store.employees.find(employee => employee.id === id)) !== JSON.stringify(expected)) throw Error('Die Mitarbeiterdaten wurden inzwischen geändert. Bitte Löschung erneut prüfen.')
   const next: EmployeeStore = { version: 1, employees: store.employees.filter(employee => employee.id !== id) }
+  if (storage.getItem(EMPLOYEES_KEY) !== source) throw Error('Der Datenbestand wurde inzwischen geändert. Bitte neu laden; keine parallelen Änderungen werden überschrieben.')
   storage.setItem(EMPLOYEES_KEY, JSON.stringify(next))
   return next
 }

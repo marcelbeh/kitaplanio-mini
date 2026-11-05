@@ -133,3 +133,15 @@ test('Veraltete Abwesenheitsbearbeitung und Löschbestätigung überschreiben ke
   const current=loadAbsences(store).absences[0]
   assert.equal(deleteAbsence(store,current.id,current).absences.length,0)
 })
+
+test('Parallel ergänzte Abwesenheiten bleiben bei Speichern und Löschen eines anderen Eintrags erhalten', () => {
+  const base=seeded();saveAbsence(base,entry(),'create')
+  const source=base.getItem(ABSENCES_KEY),original=loadAbsences(base).absences[0]
+  const concurrent=JSON.stringify({version:1,absences:[original,{...original,id:'concurrent',employeeId:'e-2',employeeName:'Lea'}]})
+  for(const remove of [false,true]) {
+    base.setItem(ABSENCES_KEY,source);let injected=false,writes=0
+    const raced={getItem(key){const raw=base.getItem(key);if(key===ABSENCES_KEY&&!injected){injected=true;base.setItem(key,concurrent)}return raw},setItem(key,value){writes++;base.setItem(key,value)}}
+    assert.throws(()=>remove?deleteAbsence(raced,original.id,original):saveAbsence(raced,{...original,portion:'am'},'update',original),/inzwischen geändert/)
+    assert.equal(writes,0);assert.equal(base.getItem(ABSENCES_KEY),concurrent)
+  }
+})

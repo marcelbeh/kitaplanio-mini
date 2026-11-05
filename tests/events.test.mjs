@@ -55,3 +55,15 @@ test('Veraltete Terminbearbeitung und Löschbestätigung erhalten neuere Termine
   const current=loadEvents(store)[0]
   assert.equal(deleteEvent(store,current.id,current).length,0)
 })
+
+test('Parallel ergänzte Termine bleiben bei Speichern und Löschen eines anderen Eintrags erhalten', () => {
+  const base=memory();saveEvent(base,entry(),'create')
+  const source=base.getItem(EVENTS_KEY),original=loadEvents(base)[0]
+  const concurrent=JSON.stringify({version:1,events:[original,{...original,id:'concurrent',title:'Parallel'}]})
+  for(const remove of [false,true]) {
+    base.setItem(EVENTS_KEY,source);let injected=false,writes=0
+    const raced={getItem(key){const raw=base.getItem(key);if(key===EVENTS_KEY&&!injected){injected=true;base.setItem(key,concurrent)}return raw},setItem(key,value){writes++;base.setItem(key,value)}}
+    assert.throws(()=>remove?deleteEvent(raced,original.id,original):saveEvent(raced,{...original,note:'Mein Entwurf'},'update',original),/inzwischen geändert/)
+    assert.equal(writes,0);assert.equal(base.getItem(EVENTS_KEY),concurrent)
+  }
+})

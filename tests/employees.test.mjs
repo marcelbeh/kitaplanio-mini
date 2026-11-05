@@ -186,3 +186,15 @@ test('Veraltete Mitarbeiterbearbeitung und Löschbestätigung erhalten zwischenz
   const current=loadEmployees(store).employees[0]
   assert.equal(deleteEmployee(store,current.id,current).employees.length,0)
 })
+
+test('Parallel ergänzte Mitarbeitende bleiben bei Speichern und Löschen eines anderen Eintrags erhalten', () => {
+  const base=memory();saveEmployee(base,valid(),groups,'create')
+  const source=base.getItem(EMPLOYEES_KEY),original=loadEmployees(base).employees[0]
+  const concurrent=JSON.stringify({version:1,employees:[original,{...original,id:'concurrent',name:'Parallel'}]})
+  for(const remove of [false,true]) {
+    base.setItem(EMPLOYEES_KEY,source);let injected=false,writes=0
+    const raced={getItem(key){const raw=base.getItem(key);if(key===EMPLOYEES_KEY&&!injected){injected=true;base.setItem(key,concurrent)}return raw},setItem(key,value){writes++;base.setItem(key,value)}}
+    assert.throws(()=>remove?deleteEmployee(raced,original.id,original):saveEmployee(raced,{...original,name:'Mein Entwurf'},groups,'update',original),/inzwischen geändert/)
+    assert.equal(writes,0);assert.equal(base.getItem(EMPLOYEES_KEY),concurrent)
+  }
+})

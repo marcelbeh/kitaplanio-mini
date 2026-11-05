@@ -107,6 +107,7 @@ export function saveShift(storage: StorageAccess, value: Shift, mode: 'create' |
   const errors = validateShift(value)
   if (errors.length) throw new Error(errors.join(' '))
   if (!shiftShape(value)) throw new Error('Die Schicht hat ein ungültiges Format.')
+  const source = storage.getItem(SHIFTS_KEY)
   const current = loadShifts(storage)
   const old = current.find(shift => shift.id === value.id)
   if (mode === 'create' && old) throw new Error('Diese Schicht-ID ist bereits vergeben.')
@@ -119,15 +120,18 @@ export function saveShift(storage: StorageAccess, value: Shift, mode: 'create' |
   if (overlappingShifts(value, current).length) throw new Error('Zeitüberschneidung: Für diese Person ist an diesem Tag bereits eine Schicht eingetragen. Bitte Beginn und Ende prüfen.')
   const normalized = { ...value, employeeName: employee?.name ?? old?.employeeName }
   const next = mode === 'create' ? [...current, normalized] : current.map(shift => shift.id === value.id ? normalized : shift)
+  if (storage.getItem(SHIFTS_KEY) !== source) throw Error('Der Datenbestand wurde inzwischen geändert. Bitte neu laden; keine parallelen Änderungen werden überschrieben.')
   storage.setItem(SHIFTS_KEY, JSON.stringify({ version: 1, shifts: next }))
   return next
 }
 export function deleteShift(storage: StorageAccess, expected: Shift): Shift[] {
+  const source = storage.getItem(SHIFTS_KEY)
   const current = loadShifts(storage)
   const old = current.find(shift => shift.id === expected.id)
   if (!old) throw new Error('Die Schicht wurde bereits gelöscht. Bitte neu laden.')
   if (!unchanged(old, expected)) throw new Error('Die Schicht wurde inzwischen geändert. Bitte abbrechen und neu öffnen.')
   const next = current.filter(shift => shift.id !== expected.id)
+  if (storage.getItem(SHIFTS_KEY) !== source) throw Error('Der Datenbestand wurde inzwischen geändert. Bitte neu laden; keine parallelen Änderungen werden überschrieben.')
   storage.setItem(SHIFTS_KEY, JSON.stringify({ version: 1, shifts: next }))
   return next
 }

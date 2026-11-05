@@ -1,5 +1,7 @@
 # P18 · Abschlussprüfung caro.
 
+> Historischer Prüfstand. Der [finale Release-Audit](final-release-audit.md) führt die offenen Punkte fort und enthält die aktuelle Freigabebewertung.
+
 Basis: main `2f380427b7eed0da6abba3114db02fb1d48eba9f` mit P16/P17. Prüfung ausschließlich am separaten Checkout mit fiktiven Fixtures und Speicher-/Netzwerk-Mocks. Keine produktiven Daten gelesen/geändert, keine Cloud-Einrichtung, SQL-Migration, KI, kostenpflichtigen Dienste, neuen Abhängigkeiten, Speicher-Keys oder Datenformate. Kein Merge/Deployment. P15/Gemini ist nicht Bestandteil von main oder dieser Prüfung.
 
 ## Bewertungsschlüssel

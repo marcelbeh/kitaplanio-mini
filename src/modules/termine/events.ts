@@ -99,20 +99,24 @@ export function saveEvent(storage: StorageAccess, value: Event, mode: 'create' |
   if (!eventShape(value)) throw new Error('Ungültiges Terminformat.')
   const errors = validateEvent(value)
   if (errors.length) throw new Error(errors.join(' '))
+  const source = storage.getItem(EVENTS_KEY)
   const current = loadEvents(storage), exists = current.some(item => item.id === value.id)
   if (mode === 'create' && exists) throw new Error('Diese Termin-ID ist bereits vergeben.')
   if (mode === 'update' && !exists) throw new Error('Der Termin wurde inzwischen entfernt. Bitte neu laden.')
   if (expected && JSON.stringify(current.find(item => item.id === value.id)) !== JSON.stringify(expected)) throw Error('Der Termin wurde inzwischen geändert. Bitte neu laden; es wurde nichts überschrieben.')
   const normalized = { ...value, title: value.title.trim(), until: value.recurrence === 'once' ? '' : value.until }
   const next = mode === 'create' ? [...current, normalized] : current.map(item => item.id === value.id ? normalized : item)
+  if (storage.getItem(EVENTS_KEY) !== source) throw Error('Der Datenbestand wurde inzwischen geändert. Bitte neu laden; keine parallelen Änderungen werden überschrieben.')
   storage.setItem(EVENTS_KEY, JSON.stringify({ version: 1, events: next }))
   return next
 }
 export function deleteEvent(storage: StorageAccess, id: string, expected?: Event): Event[] {
+  const source = storage.getItem(EVENTS_KEY)
   const current = loadEvents(storage)
   if (!current.some(item => item.id === id)) throw new Error('Der Termin wurde bereits entfernt. Bitte neu laden.')
   if (expected && JSON.stringify(current.find(item => item.id === id)) !== JSON.stringify(expected)) throw Error('Der Termin wurde inzwischen geändert. Bitte Löschung erneut prüfen.')
   const next = current.filter(item => item.id !== id)
+  if (storage.getItem(EVENTS_KEY) !== source) throw Error('Der Datenbestand wurde inzwischen geändert. Bitte neu laden; keine parallelen Änderungen werden überschrieben.')
   storage.setItem(EVENTS_KEY, JSON.stringify({ version: 1, events: next }))
   return next
 }

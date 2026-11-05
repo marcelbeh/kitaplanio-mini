@@ -91,3 +91,34 @@ test('Team-Ausgabe zeigt Samstag/Sonntag, Version und Zeiten, ohne vertrauliche 
   assert.match(draft,/Entwurf · aktueller Arbeitsplan · nicht veröffentlicht/)
   assert.doesNotMatch(draft,/Veröffentlicht · Version/)
 })
+
+test('A4-Querformat: statisches Mindesthöhenbudget für 11 Personen; kein Ersatz für echten PDF-Seitennachweis', async () => {
+  const { readFileSync } = await import('node:fs')
+  const css=readFileSync('src/modules/dienstplan/print.css','utf8')
+  const rule=(selector,property)=>{
+    const escaped=selector.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')
+    const blocks=[...css.matchAll(new RegExp(escaped+'\\s*\\{([^}]+)\\}','g'))]
+    const values=blocks.flatMap(match=>[...match[1].matchAll(new RegExp('(?:^|;)\\s*'+property+'\\s*:\\s*([0-9.]+)','g'))].map(value=>Number(value[1])))
+    assert.ok(values.length,`${selector} ${property}`);return values.at(-1)
+  }
+  const row=rule('.team-plan table','font-size'),small=rule('.team-plan small','font-size'),line=rule('.team-plan th, .team-plan td','line-height'),padding=rule('.team-plan th, .team-plan td','padding')
+  const plan=teamPlan(source(memory()),date)
+  plan.employees=Array.from({length:11},(_,i)=>({id:`test-${i}`,name:`Testperson ${i+1}`}))
+  plan.shifts=plan.employees.flatMap(person=>Array.from({length:5},(_,i)=>({...shift,id:`${person.id}-${i}`,employeeId:person.id,date:`2027-01-0${4+i}`})))
+  const html=renderToStaticMarkup(createElement(TeamPlan,{plan}))
+  const duplicateDaily=html.includes('class="team-day-total"')
+  const rowMinimum=2*row*line+small*line+2*padding+(duplicateDaily?small*line+4.5:0)
+  const available=(210-20)*72/25.4 // A4 landscape, existing 10 mm margins.
+  assert.ok(11*rowMinimum+100<=available,'11 normale Mitarbeiterzeilen lassen schon rechnerisch keinen Platz für Kopf/Fuß auf einer Seite')
+})
+
+test('Einzelne Schicht trägt bereits die Tagessumme; geteilte Dienste behalten ihre gemeinsame Summe und alle Informationen',()=>{
+  const plan=teamPlan(source(memory()),date)
+  let html=renderToStaticMarkup(createElement(TeamPlan,{plan}))
+  assert.doesNotMatch(html,/class="team-day-total"/)
+  assert.match(html,/07:00–10:00/);assert.match(html,/Pause:.*00:00/);assert.match(html,/03:00/)
+  plan.shifts.push({...shift,id:'second',start:'11:00',end:'12:00'})
+  html=renderToStaticMarkup(createElement(TeamPlan,{plan}))
+  assert.match(html,/11:00–12:00/);assert.match(html,/class="team-day-total">Tag netto: 04:00/)
+  assert.match(html,/Anna/);assert.match(html,/Sonne/)
+})

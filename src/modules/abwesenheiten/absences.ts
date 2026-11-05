@@ -75,6 +75,7 @@ export function saveAbsence(storage: StorageAccess, value: Absence, mode: 'creat
   if (!absenceShape(value)) throw new Error('Die Abwesenheit hat ein ungültiges Datenformat.')
   const errors = validateAbsence(value)
   if (errors.length) throw new Error(errors.join(' '))
+  const source = storage.getItem(ABSENCES_KEY)
   const current = loadAbsences(storage)
   const old = current.absences.find(item => item.id === value.id)
   if (mode === 'create' && old) throw new Error('Diese Abwesenheits-ID ist bereits vergeben.')
@@ -87,14 +88,17 @@ export function saveAbsence(storage: StorageAccess, value: Absence, mode: 'creat
   if (conflicts.length) throw new Error(`Überschneidung: Für diese Person ist bereits ${conflicts.map(item => `${ABSENCE_TYPES[item.type]} (${formatAbsence(item)})`).join(', ')} eingetragen. Bitte den Zeitraum oder den halben Tag prüfen.`)
   const normalized = { ...value, employeeName: employee?.name ?? old!.employeeName }
   const next: AbsenceStore = { version: 1, absences: sortAbsences(mode === 'create' ? [...current.absences, normalized] : current.absences.map(item => item.id === value.id ? normalized : item)) }
+  if (storage.getItem(ABSENCES_KEY) !== source) throw Error('Der Datenbestand wurde inzwischen geändert. Bitte neu laden; keine parallelen Änderungen werden überschrieben.')
   storage.setItem(ABSENCES_KEY, JSON.stringify(next))
   return next
 }
 export function deleteAbsence(storage: StorageAccess, id: string, expected?: Absence): AbsenceStore {
+  const source = storage.getItem(ABSENCES_KEY)
   const current = loadAbsences(storage)
   if (!current.absences.some(item => item.id === id)) throw new Error('Der Eintrag wurde bereits entfernt. Bitte die Übersicht neu laden.')
   if (expected && JSON.stringify(current.absences.find(item => item.id === id)) !== JSON.stringify(expected)) throw Error('Die Abwesenheit wurde inzwischen geändert. Bitte Löschung erneut prüfen.')
   const next: AbsenceStore = { version: 1, absences: current.absences.filter(item => item.id !== id) }
+  if (storage.getItem(ABSENCES_KEY) !== source) throw Error('Der Datenbestand wurde inzwischen geändert. Bitte neu laden; keine parallelen Änderungen werden überschrieben.')
   storage.setItem(ABSENCES_KEY, JSON.stringify(next))
   return next
 }
